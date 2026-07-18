@@ -1,0 +1,54 @@
+{
+  "name": "pebblekimai",
+  "author": "mrtruebeliever",
+  "version": "1.0.0",
+  "license": "MIT",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {
+    "pebble-clay": "^1.0.4"
+  },
+  "pebble": {
+    "displayName": "PebbleKimai",
+    "uuid": "dffe682e-6765-4d7b-ae79-127750c542a2",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "capabilities": [
+      "configurable"
+    ],
+    "targetPlatforms": [
+      "aplite",
+      "basalt",
+      "chalk",
+      "diorite",
+      "emery"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": [
+      "KIMAI_URL",
+      "KIMAI_TOKEN",
+      "DEFAULT_PROJECT",
+      "LOAD_STATE",
+      "ACT_COUNT",
+      "ACT_INDEX",
+      "ACT_ID",
+      "ACT_NAME",
+      "TIMER_STATUS",
+      "TIMER_TS_ID",
+      "TIMER_ACT_ID",
+      "TIMER_ACT_NAME",
+      "TIMER_BEGIN",
+      "ERROR_CODE",
+      "REQUEST_ACTIVITIES",
+      "REQUEST_TIMER",
+      "START_ACTIVITY",
+      "STOP_ACTIVITY",
+      "SWITCH_ACTIVITY"
+    ],
+    "resources": {
+      "media": []
+    }
+  }
+}
