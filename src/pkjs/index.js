@@ -68,13 +68,6 @@ function errorCode(status) {
   return ERR_CONFLICT;  // 4xx: validation / overlap / bad state
 }
 
-// Kimai's POST /api/timesheets expects a local (user-timezone) HTML5 datetime.
-function localIso(d) {
-  function p(n) { return ('0' + n).slice(-2); }
-  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) +
-         'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
-}
-
 // --- AppMessage senders ------------------------------------------------------
 
 function sendLoad(state) {
@@ -171,17 +164,38 @@ function withProject(cb) {
   });
 }
 
-function startActivity(actId) {
+// Strips the timezone offset from a Kimai datetime so it can be sent back
+// as-is (the API interprets plain datetimes in the Kimai user's timezone).
+function stripOffset(s) {
+  return String(s || '').replace(/(Z|[+-]\d{2}:?\d{2})$/, '');
+}
+
+function startActivity(actId, begin) {
   withProject(function (projectId) {
     if (!projectId) { sendError(ERR_NO_PROJECT); loadTimer(); return; }
-    var body = {
-      begin: localIso(new Date()),
-      project: projectId,
-      activity: actId,
-      description: ''
-    };
+    // No `begin` normally: the server stamps "now" in the Kimai user's own
+    // timezone, which sidesteps phone-vs-server timezone mismatches entirely.
+    var body = { project: projectId, activity: actId };
+    if (begin) { body.begin = begin; }
     request('POST', '/api/timesheets', body, function (ok, status) {
-      if (!ok) { sendError(errorCode(status)); }
+      if (ok) { loadTimer(); return; }
+      if (!begin && status === 400) {
+        // Kimai rounds a stopped entry's end up to the next full minute, so a
+        // start (or switch) within that minute is rejected as overlapping.
+        // Retry once, beginning exactly where the latest entry ends — but only
+        // if that end is recent, to avoid backdating after an unrelated 400.
+        request('GET', '/api/timesheets?size=1', null, function (ok2, s2, data) {
+          var end = ok2 && Array.isArray(data) && data[0] && data[0].end;
+          if (end && new Date(end).getTime() > Date.now() - 120000) {
+            startActivity(actId, stripOffset(end));
+          } else {
+            sendError(errorCode(status));
+            loadTimer();
+          }
+        });
+        return;
+      }
+      sendError(errorCode(status));
       loadTimer();
     });
   });
