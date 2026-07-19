@@ -1,82 +1,122 @@
 #!/usr/bin/env python3
-"""Generates PebbleKimai's icons: a stopwatch (time tracking).
+"""Generates PebbleKimai's icons: a stopwatch (time tracking), Pebble-style.
+
+Flat design in the mid-2010s Pebble appstore look: a bold white glyph on a
+rounded Kimai-green tile with a 45-degree flat long shadow; the launcher menu
+icon is a bold dark silhouette on transparent.
 
 Outputs:
-  resources/images/menu_icon.png   25x25  dark ink on transparent (launcher)
-  store/icon-80.png                80x80   white on a rounded Kimai-green tile
-  store/icon-144.png               144x144 white on a rounded Kimai-green tile
+  resources/images/menu_icon.png   25x25   dark silhouette on transparent
+  store/icon-80.png                80x80    white glyph on a green tile
+  store/icon-144.png               144x144  white glyph on a green tile
 
-Everything is rendered at 4x and downsampled for anti-aliasing. Run from the
-project root inside the icon venv:
+Everything is rendered supersampled and downsampled for clean edges. Run from
+the project root inside the icon venv:
     source .art-venv/bin/activate && python3 tools/gen_icon.py
 """
 import math
 import os
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
-SS = 4
+SS = 6
 ACCENT = (0x55, 0xAA, 0x00, 255)   # Kimai-ish green (matches theme.h ACCENT_HEX)
-INK_DARK = (40, 40, 40, 255)       # near-black, visible on the white launcher
+INK_DARK = (34, 34, 34, 255)       # near-black launcher silhouette
+WHITE = (255, 255, 255, 255)
 
 
-def draw_stopwatch(size, ink, bg=None, tile=False):
-    """Renders a stopwatch `size`x`size`. `ink` draws the watch; `bg` fills a
-    rounded tile behind it when `tile` is True, else the background is clear."""
-    W = size * SS
+def draw_stopwatch(W, ink, ticks=True, bold=1.0):
+    """Draws a stopwatch filling a WxW transparent RGBA image in colour `ink`."""
     img = Image.new("RGBA", (W, W), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
 
     def s(v):
-        return int(round(v * W))
+        return v * W
 
-    if tile and bg:
-        d.rounded_rectangle([0, 0, W - 1, W - 1], radius=s(0.22), fill=bg)
+    lw = int(round(s(0.075 * bold)))          # main stroke
+    cx, cy, r = s(0.5), s(0.585), s(0.335)     # watch body
 
-    lw = max(1, s(0.055))            # stroke width
+    # Top button (crown) + stem.
+    bw, bt, bb = s(0.135), s(0.05), s(0.145)
+    d.rounded_rectangle([cx - bw, bt, cx + bw, bb], radius=s(0.035), fill=ink)
+    d.line([(cx, bb), (cx, cy - r - lw * 0.3)], fill=ink, width=lw)
 
-    # Watch body.
-    cx, cy, r = s(0.5), s(0.58), s(0.34)
+    # Start button nub at ~1-2 o'clock.
+    na = math.radians(52)
+    nx, ny = cx + math.cos(na) * r, cy - math.sin(na) * r
+    d.line([(nx, ny), (nx + s(0.085), ny - s(0.085))], fill=ink, width=lw)
+
+    # Watch body ring.
     d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=ink, width=lw)
 
-    # Top button + stem.
-    bw = s(0.14)
-    d.rounded_rectangle([cx - bw, s(0.06), cx + bw, s(0.15)], radius=s(0.03), fill=ink)
-    d.line([cx, s(0.15), cx, cy - r], fill=ink, width=lw)
-
-    # Side start button (top-right diagonal nub).
-    nx, ny = cx + int(r * 0.72), cy - int(r * 0.72)
-    d.line([nx, ny, nx + s(0.09), ny - s(0.09)], fill=ink, width=lw)
-
     # Tick marks at 12 / 3 / 6 / 9.
-    for ang in (90, 0, 270, 180):
-        a = math.radians(ang)
-        x1 = cx + int(math.cos(a) * r * 0.82)
-        y1 = cy - int(math.sin(a) * r * 0.82)
-        x2 = cx + int(math.cos(a) * r * 0.66)
-        y2 = cy - int(math.sin(a) * r * 0.66)
-        d.line([x1, y1, x2, y2], fill=ink, width=lw)
+    if ticks:
+        tw = max(1, int(round(lw * 0.85)))
+        for ang in (90, 0, 270, 180):
+            a = math.radians(ang)
+            x1, y1 = cx + math.cos(a) * r * 0.80, cy - math.sin(a) * r * 0.80
+            x2, y2 = cx + math.cos(a) * r * 0.62, cy - math.sin(a) * r * 0.62
+            d.line([(x1, y1), (x2, y2)], fill=ink, width=tw)
 
-    # Hand pointing to ~1-2 o'clock + centre hub.
-    ha = math.radians(52)
-    hx = cx + int(math.cos(ha) * r * 0.62)
-    hy = cy - int(math.sin(ha) * r * 0.62)
-    d.line([cx, cy, hx, hy], fill=ink, width=max(1, s(0.05)))
-    hub = s(0.045)
+    # Hand to ~1 o'clock + centre hub.
+    ha = math.radians(58)
+    hx, hy = cx + math.cos(ha) * r * 0.60, cy - math.sin(ha) * r * 0.60
+    d.line([(cx, cy), (hx, hy)], fill=ink, width=lw)
+    hub = s(0.05)
     d.ellipse([cx - hub, cy - hub, cx + hub, cy + hub], fill=ink)
 
-    return img.resize((size, size), Image.LANCZOS)
+    return img
+
+
+def long_shadow(glyph, tile_mask, length, alpha=48):
+    """A flat 45-degree long shadow from `glyph`'s silhouette, clipped to the
+    tile, as a semi-transparent black RGBA layer."""
+    W = glyph.width
+    src = glyph.split()[-1]
+    acc = Image.new("L", (W, W), 0)
+    step = max(1, W // 260)
+    for i in range(step, length + 1, step):
+        shifted = Image.new("L", (W, W), 0)
+        shifted.paste(src, (i, i))
+        acc = ImageChops.lighter(acc, shifted)
+    acc = ImageChops.subtract(acc, src)          # shadow sits behind the glyph
+    acc = ImageChops.multiply(acc, tile_mask)    # keep it on the tile
+    acc = acc.point(lambda v: int(v * alpha / 255))
+    shadow = Image.new("RGBA", (W, W), (0, 0, 0, 0))
+    shadow.putalpha(acc)
+    return shadow
+
+
+def store_icon(size):
+    W = size * SS
+    tile = Image.new("RGBA", (W, W), (0, 0, 0, 0))
+    d = ImageDraw.Draw(tile)
+    d.rounded_rectangle([0, 0, W - 1, W - 1], radius=int(W * 0.22), fill=ACCENT)
+    tile_mask = tile.split()[-1]
+
+    glyph = draw_stopwatch(W, WHITE, ticks=True, bold=1.0)
+
+    out = Image.new("RGBA", (W, W), (0, 0, 0, 0))
+    out.alpha_composite(tile)
+    out.alpha_composite(long_shadow(glyph, tile_mask, length=int(W * 0.9)))
+    out.alpha_composite(glyph)
+    return out.resize((size, size), Image.LANCZOS)
+
+
+def menu_icon(size):
+    W = size * SS
+    glyph = draw_stopwatch(W, INK_DARK, ticks=False, bold=1.25)
+    return glyph.resize((size, size), Image.LANCZOS)
 
 
 def main():
     os.makedirs("resources/images", exist_ok=True)
     os.makedirs("store", exist_ok=True)
 
-    draw_stopwatch(25, INK_DARK).save("resources/images/menu_icon.png")
+    menu_icon(25).save("resources/images/menu_icon.png")
     print("wrote resources/images/menu_icon.png (25x25)")
 
     for sz in (80, 144):
-        draw_stopwatch(sz, (255, 255, 255, 255), bg=ACCENT, tile=True).save(
-            "store/icon-%d.png" % sz)
+        store_icon(sz).save("store/icon-%d.png" % sz)
         print("wrote store/icon-%d.png (%dx%d)" % (sz, sz, sz))
 
 
