@@ -3,17 +3,22 @@
 **Tagline:** Track your time in Kimai, straight from your wrist.
 
 **Short description (≤ 140 chars):**
-Start, stop and switch Kimai time tracking from your Pebble. Pick project and customer on the watch. Global + project activities. 5 languages.
+Start, stop and switch Kimai time tracking from your Pebble. A hero screen shows your running timer at a glance. Touch on PT2. 5 languages.
 
 **Full description:**
 
-PebbleKimai puts your self-hosted Kimai time tracking on your wrist. Choose the
-project at the top of the list, then tap an activity to start a timer — tap it
-again to stop, or pick another to switch. The elapsed time ticks live on the
-watch and in the header bar, and the Kimai server always stays the source of
-truth.
+PebbleKimai puts your self-hosted Kimai time tracking on your wrist. The home
+screen is a hero card: while a timer runs it shows the activity name and a big
+ticking elapsed time at a glance; when idle it offers your last activity with a
+one-press "Start again". Dive into the full list to start something else, tap
+an activity to start it, tap it again to stop, or pick another to switch. The
+Kimai server always stays the source of truth.
 
 FEATURES
+• Hero start screen — running timer or last activity, front and center, with a
+  one-press restart when idle.
+• Touchscreen on Pebble Time 2: tap a row to start/stop/switch, tap the hero to
+  open the list. Physical buttons keep working everywhere.
 • Active-project row on the watch — tap to choose the project time is booked on;
   long-press to choose a customer, and the project list filters to that customer.
   Your latest choice is remembered on the watch.
