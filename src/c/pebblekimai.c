@@ -3,10 +3,12 @@
 #include "data.h"
 #include "activity_list.h"
 #include "header_bar.h"
+#include "hero.h"
 #include "i18n.h"
 #include "toast.h"
 
 static void on_data_changed(void) {
+  hero_reload();
   activity_list_reload();
 }
 
@@ -43,7 +45,7 @@ static void init(void) {
   app_message_register_outbox_failed(outbox_failed);
   app_message_open(1024, 256);
 
-  window_stack_push(activity_list_window(), true);
+  window_stack_push(hero_window(), true);
 
   // Drive the phone from the watch's persisted context: load the project list
   // and the active project's activities. (The phone's 'ready' handler also does
@@ -54,6 +56,7 @@ static void init(void) {
 
 static void deinit(void) {
   activity_list_destroy();
+  hero_destroy();
   header_bar_deinit();
 }
 

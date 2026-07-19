@@ -5,18 +5,19 @@
 #include "i18n.h"
 #include "project_picker.h"
 #include "theme.h"
+#include "timer_actions.h"
 
 #define ROW_H         40
 #define ROW_RUNNING_H 58
 #define ROW_STATUS_H  44
 #define ROW_PROJECT_H 44
+#define ROW_RECT_MAX  40          // touch hit-test slots (rows 0..N)
 
-static Window     *s_window = NULL;
-static MenuLayer  *s_menu = NULL;
-static Layer      *s_header = NULL;
-static AppTimer   *s_tick = NULL;         // 1 s repaint while a timer runs
-static ActionMenu *s_action_menu = NULL;
-static int         s_target_act_id = 0;   // activity the open ActionMenu acts on
+static Window    *s_window = NULL;
+static MenuLayer *s_menu = NULL;
+static Layer     *s_header = NULL;
+static AppTimer  *s_tick = NULL;              // 1 s repaint while a timer runs
+static GRect      s_row_rect[ROW_RECT_MAX];   // last on-screen rect per row (touch)
 
 // The list is drawable once loaded, or while a (re)load streams rows in.
 static bool list_ready(void) {
@@ -30,112 +31,6 @@ static bool has_project_row(void) {
   return data_project_count() > 0 || data_active_project_name()[0];
 }
 static int act_offset(void) { return has_project_row() ? 1 : 0; }
-
-static Activity *activity_by_id(int id) {
-  for (int i = 0; i < data_activity_count(); i++) {
-    Activity *a = data_activity(i);
-    if (a && a->id == id) return a;
-  }
-  return NULL;
-}
-
-// --- Optimistic mutations ----------------------------------------------------
-// The UI flips immediately and the phone's authoritative TIMER_STATUS reply
-// corrects it afterwards (config.c clears `pending` on every confirmed state).
-
-static void begin_local_run(Activity *a) {
-  TimerState *tm = data_timer();
-  tm->status = TIMER_RUNNING;
-  tm->ts_id = 0;
-  tm->act_id = a->id;
-  strncpy(tm->act_name, a->name, ACT_NAME_LEN - 1);
-  tm->act_name[ACT_NAME_LEN - 1] = '\0';
-  tm->begin = time(NULL);
-  tm->pending = true;
-}
-
-static void do_start(Activity *a) {
-  begin_local_run(a);
-  config_start_activity(a->id);
-  vibes_short_pulse();
-  activity_list_reload();
-}
-
-static void do_switch(Activity *a) {
-  begin_local_run(a);
-  config_switch_activity(a->id);
-  vibes_short_pulse();
-  activity_list_reload();
-}
-
-static void do_stop(void) {
-  TimerState *tm = data_timer();
-  tm->status = TIMER_IDLE;
-  tm->act_id = 0;
-  tm->begin = 0;
-  tm->pending = true;
-  config_stop_activity();
-  vibes_short_pulse();
-  activity_list_reload();
-}
-
-// --- ActionMenu (confirmations) ----------------------------------------------
-
-static void action_stop(ActionMenu *menu, const ActionMenuItem *item, void *context) {
-  do_stop();
-}
-
-static void action_switch(ActionMenu *menu, const ActionMenuItem *item, void *context) {
-  Activity *a = activity_by_id(s_target_act_id);
-  if (a) { do_switch(a); }
-}
-
-static void action_refresh(ActionMenu *menu, const ActionMenuItem *item, void *context) {
-  data_set_load_state(LOAD_LOADING);
-  config_request_projects();
-  config_request_activities();
-  activity_list_reload();
-}
-
-static void action_menu_closed(ActionMenu *menu, const ActionMenuItem *item, void *context) {
-  action_menu_hierarchy_destroy(action_menu_get_root_level(menu), NULL, NULL);
-  s_action_menu = NULL;
-}
-
-static void open_action_menu(ActionMenuLevel *root) {
-  ActionMenuConfig cfg = (ActionMenuConfig) {
-    .root_level = root,
-    .colors = { .background = theme_accent(), .foreground = GColorBlack },
-    .align = ActionMenuAlignCenter,
-    .did_close = action_menu_closed,
-  };
-  s_action_menu = action_menu_open(&cfg);
-}
-
-static void open_stop_menu(void) {
-  ActionMenuLevel *root = action_menu_level_create(1);
-  action_menu_level_add_action(root, i18n(STR_STOP_TIMER), action_stop, NULL);
-  open_action_menu(root);
-}
-
-static void open_switch_menu(Activity *a) {
-  static char label[ACT_NAME_LEN + 20];
-  snprintf(label, sizeof(label), i18n(STR_SWITCH_TO), a->name);
-  s_target_act_id = a->id;
-  ActionMenuLevel *root = action_menu_level_create(1);
-  action_menu_level_add_action(root, label, action_switch, NULL);
-  open_action_menu(root);
-}
-
-static void open_long_press_menu(void) {
-  bool running = data_timer()->status == TIMER_RUNNING;
-  ActionMenuLevel *root = action_menu_level_create(running ? 2 : 1);
-  action_menu_level_add_action(root, i18n(STR_REFRESH), action_refresh, NULL);
-  if (running) {
-    action_menu_level_add_action(root, i18n(STR_STOP_TIMER), action_stop, NULL);
-  }
-  open_action_menu(root);
-}
 
 // --- MenuLayer callbacks ------------------------------------------------------
 
@@ -163,14 +58,14 @@ static const char *status_text(void) {
   }
 }
 
-// The active-project row: "▸ <project>" with the customer as a small sublabel.
+// The active-project row: project name (bold) with the customer as a sublabel,
+// and an accent stripe down the left edge to mark it as the active context.
 static void draw_project_row(GContext *ctx, const Layer *cell) {
   GRect b = layer_get_bounds(cell);
   bool selected = menu_layer_get_selected_index(s_menu).row == 0;
   const char *name = data_active_project_name();
   const char *cust = data_active_project_customer();
 
-  // Accent stripe down the left edge marks this as the active-project context.
   graphics_context_set_fill_color(ctx, selected ? GColorBlack : theme_accent());
   graphics_fill_rect(ctx, GRect(0, 0, 4, b.size.h), 0, GCornerNone);
 
@@ -189,6 +84,11 @@ static void draw_project_row(GContext *ctx, const Layer *cell) {
 
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *context) {
   GRect b = layer_get_bounds(cell);
+
+  // Remember this row's on-screen rectangle so a touch can hit-test it.
+  if (idx->row < ROW_RECT_MAX) {
+    s_row_rect[idx->row] = layer_convert_rect_to_screen((Layer *)cell, b);
+  }
 
   if (has_project_row() && idx->row == 0) {
     draw_project_row(ctx, cell);
@@ -229,20 +129,17 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
   }
 }
 
-static void select_click(MenuLayer *menu, MenuIndex *idx, void *context) {
-  if (has_project_row() && idx->row == 0) {
+// Acts on a row as if it was selected. Shared by the Select button and touch.
+static void list_activate(int row) {
+  if (has_project_row() && row == 0) {
     project_picker_push_projects();   // tap the project row = choose a project
     return;
   }
-  int ai = idx->row - act_offset();
+  int ai = row - act_offset();
 
   if (!list_ready() || data_activity_count() == 0) {
     // The status row doubles as a retry button (except while already loading).
-    if (data_load_state() != LOAD_LOADING) {
-      data_set_load_state(LOAD_LOADING);
-      config_request_activities();
-      activity_list_reload();
-    }
+    if (data_load_state() != LOAD_LOADING) { timer_refresh(); }
     return;
   }
 
@@ -252,13 +149,17 @@ static void select_click(MenuLayer *menu, MenuIndex *idx, void *context) {
 
   if (tm->status == TIMER_RUNNING) {
     if (tm->act_id == a->id) {
-      open_stop_menu();          // stopping needs a confirmation tap
+      timer_open_stop_menu();          // stopping needs a confirmation tap
     } else {
-      open_switch_menu(a);       // switching stops the running timer: confirm
+      timer_open_switch_menu(a);       // switching stops the running timer: confirm
     }
   } else {
-    do_start(a);                 // idle (or state still unknown): start directly
+    timer_start(a);                    // idle (or state still unknown): start directly
   }
+}
+
+static void select_click(MenuLayer *menu, MenuIndex *idx, void *context) {
+  list_activate(idx->row);
 }
 
 static void select_long_click(MenuLayer *menu, MenuIndex *idx, void *context) {
@@ -266,7 +167,25 @@ static void select_long_click(MenuLayer *menu, MenuIndex *idx, void *context) {
     project_picker_push_customers();  // long-press the project row = choose a customer
     return;
   }
-  open_long_press_menu();
+  timer_open_long_press_menu();
+}
+
+// --- Touch (Pebble Time 2) ----------------------------------------------------
+// A tap selects and activates the row under the finger; the physical buttons
+// keep working as the always-available fallback. No-op where touch is disabled.
+
+static void touch_handler(const TouchEvent *event, void *context) {
+  if (event->type != TouchEvent_Liftoff || !s_menu) return;
+  GPoint p = GPoint(event->x, event->y);
+  int n = get_num_rows(s_menu, 0, NULL);
+  for (int r = 0; r < n && r < ROW_RECT_MAX; r++) {
+    if (grect_contains_point(&s_row_rect[r], &p)) {
+      menu_layer_set_selected_index(s_menu, (MenuIndex){ .section = 0, .row = r },
+                                    MenuRowAlignNone, false);
+      list_activate(r);
+      return;
+    }
+  }
 }
 
 // --- Second tick (elapsed time repaint) --------------------------------------
@@ -307,10 +226,14 @@ static void window_appear(Window *window) {
   if (!s_tick) {
     s_tick = app_timer_register(1000, second_tick, NULL);
   }
+  if (touch_service_is_enabled()) {
+    touch_service_subscribe(touch_handler, NULL);
+  }
 }
 
 static void window_disappear(Window *window) {
   if (s_tick) { app_timer_cancel(s_tick); s_tick = NULL; }
+  touch_service_unsubscribe();
 }
 
 static void window_unload(Window *window) {

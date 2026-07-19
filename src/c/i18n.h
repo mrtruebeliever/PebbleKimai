@@ -34,6 +34,11 @@ typedef enum {
   STR_TOAST_CONFLICT,   // "Timer conflict"
   STR_TOAST_NOPROJECT,  // "No project in Kimai"
   STR_TOAST_ERROR,      // "Kimai error"
+  STR_HERO_RUNNING,     // "Running"        (hero status label)
+  STR_HERO_LAST,        // "Last activity"  (hero status label, idle)
+  STR_HERO_READY,       // "Ready"          (hero status label, nothing run yet)
+  STR_START_AGAIN,      // "Start again"    (hero idle CTA)
+  STR_CHOOSE_ACTIVITY,  // "Choose activity"(hero idle CTA, no last activity)
   STR_COUNT,
 } StrId;
 
