@@ -6,9 +6,10 @@ rounded Kimai-green tile with a 45-degree flat long shadow; the launcher menu
 icon is a bold dark silhouette on transparent.
 
 Outputs:
-  resources/images/menu_icon.png   25x25   dark silhouette on transparent
-  store/icon-80.png                80x80    white glyph on a green tile
-  store/icon-144.png               144x144  white glyph on a green tile
+  resources/images/menu_icon.png    25x25   dark silhouette on transparent
+  resources/images/header_icon.png  22x22   pure-black silhouette (top bar)
+  store/icon-80.png                 80x80    white glyph on a green tile
+  store/icon-144.png                144x144  white glyph on a green tile
 
 Everything is rendered supersampled and downsampled for clean edges. Run from
 the project root inside the icon venv:
@@ -108,12 +109,22 @@ def menu_icon(size):
     return glyph.resize((size, size), Image.LANCZOS)
 
 
+def header_icon(size):
+    # Pure black so it reads on the green accent bar (same as the black text).
+    W = size * SS
+    glyph = draw_stopwatch(W, (0, 0, 0, 255), ticks=False, bold=1.15)
+    return glyph.resize((size, size), Image.LANCZOS)
+
+
 def main():
     os.makedirs("resources/images", exist_ok=True)
     os.makedirs("store", exist_ok=True)
 
     menu_icon(25).save("resources/images/menu_icon.png")
     print("wrote resources/images/menu_icon.png (25x25)")
+
+    header_icon(22).save("resources/images/header_icon.png")
+    print("wrote resources/images/header_icon.png (22x22)")
 
     for sz in (80, 144):
         store_icon(sz).save("store/icon-%d.png" % sz)

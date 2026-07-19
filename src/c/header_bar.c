@@ -2,7 +2,8 @@
 #include "data.h"
 #include "theme.h"
 
-static Layer *s_active = NULL;   // the header currently on screen
+static GBitmap *s_icon   = NULL;   // stopwatch shown at the far left of the bar
+static Layer   *s_active = NULL;   // the header currently on screen
 
 static void header_update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
@@ -16,6 +17,16 @@ static void header_update(Layer *layer, GContext *ctx) {
   graphics_context_set_text_color(ctx, GColorBlack);
   GFont f18 = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
 
+  // App icon (left, vertically centered); the left text starts after it.
+  int name_x = 6;
+  if (s_icon) {
+    GRect ib = gbitmap_get_bounds(s_icon);
+    int iy = (b.size.h - ib.size.h) / 2;
+    graphics_context_set_compositing_mode(ctx, GCompOpSet);
+    graphics_draw_bitmap_in_rect(ctx, s_icon, GRect(3, iy, ib.size.w, ib.size.h));
+    name_x = 3 + ib.size.w + 4;
+  }
+
   // Time (right-aligned).
   char time_buf[16];
   clock_copy_time_string(time_buf, sizeof(time_buf));
@@ -25,20 +36,17 @@ static void header_update(Layer *layer, GContext *ctx) {
                      GRect(time_left, 4, TIME_W, 20),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentRight, NULL);
 
-  // Left: the ticking elapsed time while a timer runs, the app title otherwise.
-  // The "running" dot is drawn (not a glyph) so it renders in every system font.
+  // Between the icon and the clock: the ticking elapsed time while a timer runs
+  // (the stopwatch icon already brands the bar), the app title otherwise.
   TimerState *tm = data_timer();
+  char left_buf[24];
   if (tm->status == TIMER_RUNNING) {
-    graphics_context_set_fill_color(ctx, GColorBlack);
-    graphics_fill_circle(ctx, GPoint(11, 13), 4);
-    char elapsed[16];
-    data_timer_elapsed_str(elapsed, sizeof(elapsed));
-    graphics_draw_text(ctx, elapsed, f18, GRect(20, 4, time_left - 24, 20),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    data_timer_elapsed_str(left_buf, sizeof(left_buf));
   } else {
-    graphics_draw_text(ctx, "Kimai", f18, GRect(6, 4, time_left - 12, 20),
-                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+    snprintf(left_buf, sizeof(left_buf), "Kimai");
   }
+  graphics_draw_text(ctx, left_buf, f18, GRect(name_x, 4, time_left - name_x - 4, 20),
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
@@ -46,11 +54,13 @@ static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 void header_bar_init(void) {
+  s_icon = gbitmap_create_with_resource(RESOURCE_ID_IMG_HEADER_ICON);
   tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
 }
 
 void header_bar_deinit(void) {
   tick_timer_service_unsubscribe();
+  if (s_icon) { gbitmap_destroy(s_icon); s_icon = NULL; }
 }
 
 Layer *header_bar_create(int width) {

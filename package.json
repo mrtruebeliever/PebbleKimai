@@ -64,6 +64,11 @@
           "name": "IMG_MENU_ICON",
           "file": "images/menu_icon.png",
           "menuIcon": true
+        },
+        {
+          "type": "png",
+          "name": "IMG_HEADER_ICON",
+          "file": "images/header_icon.png"
         }
       ]
     }
