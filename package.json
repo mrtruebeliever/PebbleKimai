@@ -70,6 +70,27 @@
           "type": "png",
           "name": "IMG_HEADER_ICON",
           "file": "images/header_icon.png"
+        },
+        {
+          "type": "font",
+          "name": "FONT_RAJDHANI_28",
+          "file": "fonts/Rajdhani-Bold.ttf",
+          "characterRegex": "[ -~À-ÿ]",
+          "compatibility": "2.7"
+        },
+        {
+          "type": "font",
+          "name": "FONT_RAJDHANI_34",
+          "file": "fonts/Rajdhani-Bold.ttf",
+          "characterRegex": "[0-9: ]",
+          "compatibility": "2.7"
+        },
+        {
+          "type": "font",
+          "name": "FONT_RAJDHANI_46",
+          "file": "fonts/Rajdhani-Bold.ttf",
+          "characterRegex": "[0-9: ]",
+          "compatibility": "2.7"
         }
       ]
     }

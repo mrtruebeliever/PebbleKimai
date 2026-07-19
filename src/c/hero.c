@@ -15,6 +15,21 @@ static Layer    *s_body = NULL;
 static Layer    *s_header = NULL;
 static AppTimer *s_tick = NULL;
 
+// Rajdhani (the Demi watchface display font) for the large hero text.
+static GFont s_f_name   = NULL;   // activity name / CTA
+static GFont s_f_big    = NULL;   // elapsed timer (wide screens)
+static GFont s_f_big_sm = NULL;   // elapsed timer (narrow screens)
+
+static GFont name_font(void) {
+  return s_f_name ? s_f_name : fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD);
+}
+static GFont big_font(bool wide) {
+  GFont f = wide ? s_f_big : s_f_big_sm;
+  if (f) return f;
+  return fonts_get_system_font(wide ? FONT_KEY_LECO_38_BOLD_NUMBERS
+                                    : FONT_KEY_LECO_32_BOLD_NUMBERS);
+}
+
 static bool has_project_row(void) {
   return data_project_count() > 0 || data_active_project_name()[0];
 }
@@ -43,9 +58,8 @@ static void draw_card(Layer *layer, GContext *ctx) {
   bool running = tm->status == TIMER_RUNNING;
 
   GFont f_label = fonts_get_system_font(FONT_KEY_GOTHIC_14);
-  GFont f_name  = fonts_get_system_font(wide ? FONT_KEY_GOTHIC_28_BOLD : FONT_KEY_GOTHIC_24_BOLD);
-  GFont f_big   = fonts_get_system_font(wide ? FONT_KEY_LECO_38_BOLD_NUMBERS
-                                             : FONT_KEY_LECO_32_BOLD_NUMBERS);
+  GFont f_name  = name_font();
+  GFont f_big   = big_font(wide);
   GFont f_proj  = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
 
   // Status label (top).
@@ -174,6 +188,10 @@ static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
   GRect b = layer_get_bounds(root);
 
+  s_f_name   = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_RAJDHANI_28));
+  s_f_big    = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_RAJDHANI_46));
+  s_f_big_sm = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_RAJDHANI_34));
+
   s_body = layer_create(GRect(0, HEADER_BAR_HEIGHT, b.size.w, b.size.h - HEADER_BAR_HEIGHT));
   layer_set_update_proc(s_body, draw_card);
   layer_add_child(root, s_body);
@@ -201,6 +219,9 @@ static void window_disappear(Window *window) {
 static void window_unload(Window *window) {
   if (s_body) { layer_destroy(s_body); s_body = NULL; }
   if (s_header) { layer_destroy(s_header); s_header = NULL; }
+  if (s_f_name)   { fonts_unload_custom_font(s_f_name);   s_f_name = NULL; }
+  if (s_f_big)    { fonts_unload_custom_font(s_f_big);    s_f_big = NULL; }
+  if (s_f_big_sm) { fonts_unload_custom_font(s_f_big_sm); s_f_big_sm = NULL; }
 }
 
 Window *hero_window(void) {

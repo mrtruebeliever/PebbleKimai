@@ -10,6 +10,8 @@
   and touch self-disables on non-touch watches.
 - The last activity is remembered across a stop (persisted on the watch).
 - Stopwatch icon in the header bar.
+- The hero's large text (activity name + elapsed) uses the Rajdhani display font
+  (as on the Demi watchface).
 
 ## 2.0.0
 
