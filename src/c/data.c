@@ -17,6 +17,9 @@ static char s_ap_customer[CUST_NAME_LEN] = "";
 static int  s_ac_id = 0;
 static char s_ac_name[CUST_NAME_LEN] = "";
 
+static int  s_last_act_id = 0;
+static char s_last_act_name[ACT_NAME_LEN] = "";
+
 int  data_load_state(void)      { return s_load_state; }
 void data_set_load_state(int s) { s_load_state = s; }
 
@@ -102,6 +105,15 @@ void data_set_active_customer(int id, const char *name) {
   s_ac_id = id;
   strncpy(s_ac_name, name ? name : "", CUST_NAME_LEN - 1);
   s_ac_name[CUST_NAME_LEN - 1] = '\0';
+}
+
+int         data_last_activity_id(void)   { return s_last_act_id; }
+const char *data_last_activity_name(void) { return s_last_act_name; }
+
+void data_set_last_activity(int id, const char *name) {
+  s_last_act_id = id;
+  strncpy(s_last_act_name, name ? name : "", ACT_NAME_LEN - 1);
+  s_last_act_name[ACT_NAME_LEN - 1] = '\0';
 }
 
 TimerState *data_timer(void) { return &s_timer; }

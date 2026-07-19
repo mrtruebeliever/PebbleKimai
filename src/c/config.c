@@ -74,6 +74,24 @@ void config_load(void) {
     persist_read_string(PERSIST_AC_NAME, ac_name, sizeof(ac_name));
   }
   data_set_active_customer(ac_id < 0 ? 0 : ac_id, ac_name);
+
+  int  la_id = persist_exists(PERSIST_LAST_ACT_ID) ? persist_read_int(PERSIST_LAST_ACT_ID) : 0;
+  char la_name[ACT_NAME_LEN] = "";
+  if (persist_exists(PERSIST_LAST_ACT_NAME)) {
+    persist_read_string(PERSIST_LAST_ACT_NAME, la_name, sizeof(la_name));
+  }
+  data_set_last_activity(la_id < 0 ? 0 : la_id, la_name);
+}
+
+// Records the activity a timer is running on as the "last activity", persisted
+// so the idle hero can offer to start it again. Called on every confirmed or
+// optimistic RUNNING state.
+void config_note_last_activity(int id, const char *name) {
+  if (id <= 0 || !name || !name[0]) return;
+  if (id == data_last_activity_id()) return;   // unchanged; skip the persist write
+  data_set_last_activity(id, name);
+  persist_write_int(PERSIST_LAST_ACT_ID, id);
+  persist_write_string(PERSIST_LAST_ACT_NAME, name);
 }
 
 // --- Incoming: activity stream -----------------------------------------------
@@ -167,6 +185,11 @@ static void apply_timer(DictionaryIterator *iter) {
   if ((t = dict_find(iter, MESSAGE_KEY_TIMER_ACT_NAME))) {
     strncpy(tm->act_name, t->value->cstring, ACT_NAME_LEN - 1);
     tm->act_name[ACT_NAME_LEN - 1] = '\0';
+  }
+
+  // Remember what ran, so the idle hero can offer to start it again.
+  if (tm->status == TIMER_RUNNING) {
+    config_note_last_activity(tm->act_id, tm->act_name);
   }
 }
 

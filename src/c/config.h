@@ -9,6 +9,8 @@
 #define PERSIST_AP_CUST_NAME  5
 #define PERSIST_AC_ID         6
 #define PERSIST_AC_NAME       7
+#define PERSIST_LAST_ACT_ID   8
+#define PERSIST_LAST_ACT_NAME 9
 
 // AppMessage in/outbox for the Kimai companion protocol.
 
@@ -31,6 +33,10 @@ void config_inbox_received(DictionaryIterator *iter, void *context);
 void config_set_active_project(int id, const char *name, int customer_id, const char *customer);
 // Picks the customer filter for the project picker (persisted).
 void config_set_active_customer(int id, const char *name);
+
+// Records the running activity as the "last activity" (persisted). No-op for an
+// empty/unchanged value.
+void config_note_last_activity(int id, const char *name);
 
 // --- Outbox helpers ----------------------------------------------------------
 void config_request_projects(void);                    // reload the project list

@@ -90,6 +90,13 @@ const char *data_active_customer_name(void);
 void data_set_active_project(int id, const char *name, int customer_id, const char *customer);
 void data_set_active_customer(int id, const char *name);
 
+// --- Last activity (persisted; see config.c) ---------------------------------
+// The most recent activity a timer ran on. Survives a stop so the idle hero can
+// offer to start it again. 0 / "" when nothing has run yet.
+int         data_last_activity_id(void);
+const char *data_last_activity_name(void);
+void        data_set_last_activity(int id, const char *name);
+
 // --- Timer -------------------------------------------------------------------
 TimerState *data_timer(void);
 // Formats the running timer's elapsed time as "h:mm:ss" into buf.
