@@ -7,7 +7,14 @@ the header bar; the Kimai server is always the source of truth.
 
 ## Features
 
-- **Active-project row** at the top: tap it to pick the project new timesheets
+- **Hero start screen**: the landing screen shows the running activity as a card
+  with its name, a big ticking elapsed time and the project/customer — or, when
+  idle, the last activity with a one-press **Start again**. Down/Select jump into
+  the activity list; long-press Select stops (or refreshes).
+- **Touchscreen** support on Pebble Time 2: tap a row to select and start/stop/
+  switch it, tap the hero card to open the list. The physical buttons keep
+  working everywhere (touch self-disables on non-touch watches).
+- **Active-project row** at the top of the list: tap it to pick the project new timesheets
   are booked on; long-press it to pick a **customer** (the project list then
   filters to that customer). Your latest choice is remembered on the watch.
 - List of the **global activities** plus any activities bound to the active
@@ -59,12 +66,14 @@ Build a size-optimized store `.pbw`: `python3 tools/release.py`.
 
 ## Architecture
 
-- `src/c/` — watch app: `activity_list` (MenuLayer with the project row +
-  ActionMenu confirmations), `project_picker` (project / customer picker),
-  `header_bar` (accent bar with clock + ticking elapsed time), `data` (fixed
-  arrays, project list, active context, timer state), `config` (AppMessage
-  protocol + persisted settings), `i18n` (five-language string table), `toast`
-  (error popups).
+- `src/c/` — watch app: `hero` (landing card: running / last activity + touch),
+  `activity_list` (MenuLayer with the project row + touch hit-testing),
+  `timer_actions` (optimistic start/stop/switch + confirmation ActionMenus shared
+  by both screens), `project_picker` (project / customer picker), `header_bar`
+  (accent bar with the app icon, clock + ticking elapsed time), `data` (fixed
+  arrays, project list, active + last-activity context, timer state), `config`
+  (AppMessage protocol + persisted settings), `i18n` (five-language string
+  table), `toast` (error popups).
 - `src/pkjs/` — phone companion: Kimai REST calls, project + activity streaming,
   timer reconciliation, Clay settings page (`i18n.js`).
 

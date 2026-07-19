@@ -11,6 +11,7 @@
 #define PERSIST_AC_NAME       7
 #define PERSIST_LAST_ACT_ID   8
 #define PERSIST_LAST_ACT_NAME 9
+// (next free persist key: 10)
 
 // AppMessage in/outbox for the Kimai companion protocol.
 

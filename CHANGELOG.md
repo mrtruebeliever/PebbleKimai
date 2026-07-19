@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.0
+
+- **Hero start screen**: a landing card showing the running activity (name, big
+  ticking elapsed, project/customer) or, when idle, the last activity with a
+  one-press "Start again". Down/Select open the activity list.
+- **Touchscreen navigation** on Pebble Time 2: tap a row to select/start/stop/
+  switch, tap the hero to open the list; physical buttons remain the fallback
+  and touch self-disables on non-touch watches.
+- The last activity is remembered across a stop (persisted on the watch).
+- Stopwatch icon in the header bar.
+
 ## 2.0.0
 
 - **Project context on the watch.** A new active-project row at the top of the
