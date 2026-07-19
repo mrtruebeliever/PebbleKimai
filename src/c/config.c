@@ -5,7 +5,8 @@
 static void (*s_change_cb)(void) = NULL;
 static void (*s_error_cb)(int) = NULL;
 
-static int s_lang = LANG_EN;
+static int  s_lang = LANG_EN;
+static bool s_touch_enabled = true;
 
 // Announced size of the project stream in flight, so the active project is
 // reconciled exactly once when the whole list has arrived (-1 = no stream).
@@ -14,7 +15,8 @@ static int s_proj_total = -1;
 void config_set_change_callback(void (*cb)(void)) { s_change_cb = cb; }
 void config_set_error_callback(void (*cb)(int))   { s_error_cb = cb; }
 
-int config_lang(void) { return s_lang; }
+int  config_lang(void)          { return s_lang; }
+bool config_touch_enabled(void) { return s_touch_enabled; }
 
 // Decode an integer tuple by its actual type and width. The real phone app
 // packs integers at their smallest width (a 1 arrives as a 1-byte tuple), so
@@ -54,6 +56,8 @@ static int resolve_lang(int stored) {
 void config_load(void) {
   int stored = persist_exists(PERSIST_LANG) ? persist_read_int(PERSIST_LANG) : LANG_AUTO;
   s_lang = resolve_lang(stored);
+
+  s_touch_enabled = persist_exists(PERSIST_TOUCH) ? (persist_read_int(PERSIST_TOUCH) != 0) : true;
 
   int  ap_id = persist_exists(PERSIST_AP_ID) ? persist_read_int(PERSIST_AP_ID) : 0;
   int  ap_cid = persist_exists(PERSIST_AP_CUST_ID) ? persist_read_int(PERSIST_AP_CUST_ID) : 0;
@@ -200,6 +204,11 @@ void config_inbox_received(DictionaryIterator *iter, void *context) {
     int v = tuple_int(t);                 // may be LANG_AUTO
     persist_write_int(PERSIST_LANG, v);
     s_lang = resolve_lang(v);
+  }
+
+  if ((t = dict_find(iter, MESSAGE_KEY_TOUCH_ENABLED))) {
+    s_touch_enabled = tuple_int(t) != 0;
+    persist_write_int(PERSIST_TOUCH, s_touch_enabled ? 1 : 0);
   }
 
   // Clay's default project / customer arrive as ids only; names get resolved

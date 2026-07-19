@@ -6,6 +6,8 @@
 #include "project_picker.h"
 #include "theme.h"
 #include "timer_actions.h"
+#include "touch_nav.h"
+#include <stdlib.h>
 
 #define ROW_H         40
 #define ROW_RUNNING_H 58
@@ -171,12 +173,15 @@ static void select_long_click(MenuLayer *menu, MenuIndex *idx, void *context) {
 }
 
 // --- Touch (Pebble Time 2) ----------------------------------------------------
-// A tap selects and activates the row under the finger; the physical buttons
-// keep working as the always-available fallback. No-op where touch is disabled.
+// Tap a row to select+activate it; drag up/down to scroll; swipe right to go
+// back. The physical buttons keep working as the always-available fallback.
 
-static void touch_handler(const TouchEvent *event, void *context) {
-  if (event->type != TouchEvent_Liftoff || !s_menu) return;
-  GPoint p = GPoint(event->x, event->y);
+static int16_t s_tx0, s_ty0;     // touchdown point
+static int16_t s_last_y;         // last y a scroll step was taken at
+static bool    s_scrolled;       // this gesture already scrolled (=> not a tap)
+
+static void tap_row(int16_t x, int16_t y) {
+  GPoint p = GPoint(x, y);
   int n = get_num_rows(s_menu, 0, NULL);
   for (int r = 0; r < n && r < ROW_RECT_MAX; r++) {
     if (grect_contains_point(&s_row_rect[r], &p)) {
@@ -184,6 +189,43 @@ static void touch_handler(const TouchEvent *event, void *context) {
                                     MenuRowAlignNone, false);
       list_activate(r);
       return;
+    }
+  }
+}
+
+static void touch_handler(const TouchEvent *event, void *context) {
+  if (!s_menu || !config_touch_enabled()) return;
+
+  switch (event->type) {
+    case TouchEvent_Touchdown:
+      s_tx0 = event->x; s_ty0 = event->y; s_last_y = event->y; s_scrolled = false;
+      break;
+
+    case TouchEvent_PositionUpdate: {
+      // Scroll only while the drag stays mostly vertical (a horizontal drag is a
+      // back-swipe, handled on liftoff). One selection step per row of travel.
+      if (abs(event->x - s_tx0) > abs(event->y - s_ty0)) break;
+      int dy = event->y - s_last_y;
+      while (dy >= TOUCH_SCROLL_STEP) {          // finger down -> previous row
+        menu_layer_set_selected_next(s_menu, true, MenuRowAlignCenter, false);
+        s_last_y += TOUCH_SCROLL_STEP; dy -= TOUCH_SCROLL_STEP; s_scrolled = true;
+      }
+      while (dy <= -TOUCH_SCROLL_STEP) {         // finger up -> next row
+        menu_layer_set_selected_next(s_menu, false, MenuRowAlignCenter, false);
+        s_last_y -= TOUCH_SCROLL_STEP; dy += TOUCH_SCROLL_STEP; s_scrolled = true;
+      }
+      break;
+    }
+
+    case TouchEvent_Liftoff: {
+      if (s_scrolled) break;                     // was a scroll drag: nothing to do
+      int adx = abs(event->x - s_tx0), ady = abs(event->y - s_ty0);
+      if (adx >= TOUCH_SWIPE_MIN && adx > ady) {
+        if (event->x > s_tx0) { window_stack_pop(true); }   // swipe right = back
+      } else if (adx <= TOUCH_TAP_MAX && ady <= TOUCH_TAP_MAX) {
+        tap_row(event->x, event->y);             // tap = select + activate
+      }
+      break;
     }
   }
 }
@@ -226,7 +268,7 @@ static void window_appear(Window *window) {
   if (!s_tick) {
     s_tick = app_timer_register(1000, second_tick, NULL);
   }
-  if (touch_service_is_enabled()) {
+  if (touch_service_is_enabled() && config_touch_enabled()) {
     touch_service_subscribe(touch_handler, NULL);
   }
 }

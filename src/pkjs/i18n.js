@@ -8,6 +8,7 @@ var L = {
     token_label: 'API token',
     token_desc: 'Create one in Kimai under your user profile > API Access. It stays on your phone only and is never sent to the watch.',
     general_heading: 'General', language: 'Language', automatic: 'Automatic (watch language)',
+    touch_label: 'Touchscreen', touch_desc: 'Use touch to tap, scroll and swipe right to go back (Pebble Time 2). The buttons always keep working.',
     booking_heading: 'Booking',
     project_label: 'Default project', project_first: '(first project)',
     customer_label: 'Default customer', customer_any: '(all customers)',
@@ -20,6 +21,7 @@ var L = {
     token_label: 'API-token',
     token_desc: 'Maak er een aan in Kimai onder je gebruikersprofiel > API-toegang. De token blijft alleen op je telefoon en wordt nooit naar het horloge gestuurd.',
     general_heading: 'Algemeen', language: 'Taal', automatic: 'Automatisch (horlogetaal)',
+    touch_label: 'Aanraakscherm', touch_desc: 'Gebruik touch om te tikken, scrollen en naar rechts te vegen om terug te gaan (Pebble Time 2). De knoppen blijven altijd werken.',
     booking_heading: 'Boeken',
     project_label: 'Standaardproject', project_first: '(eerste project)',
     customer_label: 'Standaardklant', customer_any: '(alle klanten)',
@@ -32,6 +34,7 @@ var L = {
     token_label: 'Jeton API',
     token_desc: 'Créez-en un dans Kimai sous votre profil > Accès API. Il reste uniquement sur votre téléphone et n\'est jamais envoyé à la montre.',
     general_heading: 'Général', language: 'Langue', automatic: 'Automatique (langue de la montre)',
+    touch_label: 'Écran tactile', touch_desc: 'Utilisez le tactile pour toucher, faire défiler et glisser vers la droite pour revenir (Pebble Time 2). Les boutons fonctionnent toujours.',
     booking_heading: 'Saisie',
     project_label: 'Projet par défaut', project_first: '(premier projet)',
     customer_label: 'Client par défaut', customer_any: '(tous les clients)',
@@ -44,6 +47,7 @@ var L = {
     token_label: 'API-Token',
     token_desc: 'Erstelle einen in Kimai unter deinem Benutzerprofil > API-Zugriff. Er bleibt nur auf deinem Telefon und wird nie an die Uhr gesendet.',
     general_heading: 'Allgemein', language: 'Sprache', automatic: 'Automatisch (Uhrsprache)',
+    touch_label: 'Touchscreen', touch_desc: 'Touch zum Tippen, Scrollen und nach rechts wischen zum Zurückgehen (Pebble Time 2). Die Tasten funktionieren immer weiter.',
     booking_heading: 'Buchung',
     project_label: 'Standardprojekt', project_first: '(erstes Projekt)',
     customer_label: 'Standardkunde', customer_any: '(alle Kunden)',
@@ -56,6 +60,7 @@ var L = {
     token_label: 'Token de API',
     token_desc: 'Crea uno en Kimai en tu perfil de usuario > Acceso API. Permanece solo en tu teléfono y nunca se envía al reloj.',
     general_heading: 'General', language: 'Idioma', automatic: 'Automático (idioma del reloj)',
+    touch_label: 'Pantalla táctil', touch_desc: 'Usa el táctil para tocar, desplazar y deslizar a la derecha para volver (Pebble Time 2). Los botones siempre siguen funcionando.',
     booking_heading: 'Registro',
     project_label: 'Proyecto predeterminado', project_first: '(primer proyecto)',
     customer_label: 'Cliente predeterminado', customer_any: '(todos los clientes)',
@@ -93,7 +98,10 @@ function buildConfig(langIdx, projects, customers, snap) {
           { label: 'Français', value: '2' },
           { label: 'Deutsch', value: '3' },
           { label: 'Español', value: '4' }
-        ] }
+        ] },
+      { type: 'toggle', messageKey: 'TOUCH_ENABLED', label: s.touch_label,
+        defaultValue: snap.touchEnabled !== false },
+      { type: 'text', defaultValue: s.touch_desc }
     ] }
   ];
 

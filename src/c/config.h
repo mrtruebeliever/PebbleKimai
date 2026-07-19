@@ -11,7 +11,8 @@
 #define PERSIST_AC_NAME       7
 #define PERSIST_LAST_ACT_ID   8
 #define PERSIST_LAST_ACT_NAME 9
-// (next free persist key: 10)
+#define PERSIST_TOUCH         10
+// (next free persist key: 11)
 
 // AppMessage in/outbox for the Kimai companion protocol.
 
@@ -20,6 +21,10 @@ void config_load(void);
 
 // Current UI language index (Lang from i18n.h). Valid after config_load.
 int  config_lang(void);
+
+// Whether touchscreen input is enabled (Clay setting; default true). The watch
+// still also requires touch_service_is_enabled() at runtime.
+bool config_touch_enabled(void);
 
 // Fired whenever incoming data changed (activities, projects, load state, timer).
 void config_set_change_callback(void (*cb)(void));

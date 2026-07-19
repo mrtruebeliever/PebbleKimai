@@ -44,6 +44,7 @@ function getBase() {
 function getToken() { return (localStorage.getItem('KIMAI_TOKEN') || '').trim(); }
 function getDefProject() { return parseInt(localStorage.getItem('DEF_PROJECT'), 10) || 0; }
 function getDefCustomer() { return parseInt(localStorage.getItem('DEF_CUSTOMER'), 10) || 0; }
+function getTouchEnabled() { return localStorage.getItem('TOUCH_ENABLED') !== '0'; }  // default on
 function getAllProjects() {
   try { return JSON.parse(localStorage.getItem('ALL_PROJECTS') || '[]'); }
   catch (e) { return []; }
@@ -350,6 +351,7 @@ function settingsSnapshot() {
     url: getBase(),
     token: getToken(),
     langRaw: getLangRaw(),
+    touchEnabled: getTouchEnabled(),
     defProject: String(getDefProject() || ''),
     defCustomer: String(getDefCustomer() || '')
   };
@@ -397,6 +399,8 @@ Pebble.addEventListener('webviewclosed', function (e) {
   var defCustomer = parseInt(pick('DEFAULT_CUSTOMER'), 10) || 0;
   var lang = parseInt(pick('LANGUAGE'), 10);
   if (isNaN(lang)) { lang = 255; }  // 255 = Automatic (follow watch locale)
+  var touchRaw = pick('TOUCH_ENABLED');
+  var touchEnabled = (touchRaw === undefined || touchRaw === null) ? true : !!touchRaw;
   // Token value is never logged.
   console.log('webviewclosed: urlSet=' + !!url + ' tokenLen=' + token.length +
               ' defProject=' + defProject + ' defCustomer=' + defCustomer + ' lang=' + lang);
@@ -404,6 +408,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
   localStorage.setItem('KIMAI_URL', url);
   localStorage.setItem('KIMAI_TOKEN', token);
   localStorage.setItem('LANG', String(lang));
+  localStorage.setItem('TOUCH_ENABLED', touchEnabled ? '1' : '0');
   localStorage.setItem('DEF_PROJECT', String(defProject || ''));
   localStorage.setItem('DEF_CUSTOMER', String(defCustomer || ''));
 
@@ -411,6 +416,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
   // 0 (="first/all") is intentionally sent so the watch can ignore it.
   var msg = {};
   msg[keys.LANGUAGE] = lang;
+  msg[keys.TOUCH_ENABLED] = touchEnabled ? 1 : 0;
   msg[keys.DEFAULT_PROJECT] = defProject;
   msg[keys.DEFAULT_CUSTOMER] = defCustomer;
   Pebble.sendAppMessage(msg, function () {

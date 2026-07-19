@@ -32,6 +32,7 @@
       "DEFAULT_PROJECT",
       "DEFAULT_CUSTOMER",
       "LANGUAGE",
+      "TOUCH_ENABLED",
       "LOAD_STATE",
       "ACT_COUNT",
       "ACT_INDEX",
