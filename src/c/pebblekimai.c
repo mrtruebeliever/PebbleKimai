@@ -5,11 +5,13 @@
 #include "header_bar.h"
 #include "hero.h"
 #include "i18n.h"
+#include "project_picker.h"
 #include "toast.h"
 
 static void on_data_changed(void) {
   hero_reload();
   activity_list_reload();
+  project_picker_reload();
 }
 
 // Error codes mirror index.js; the phone follows every error with a fresh
