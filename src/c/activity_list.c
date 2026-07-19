@@ -222,7 +222,7 @@ static void window_load(Window *window) {
 }
 
 static void window_appear(Window *window) {
-  header_bar_set_active(s_header);
+  header_bar_set_active(s_header, true);   // list header shows the ticking elapsed
   if (!s_tick) {
     s_tick = app_timer_register(1000, second_tick, NULL);
   }

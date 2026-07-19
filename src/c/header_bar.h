@@ -16,8 +16,10 @@ void header_bar_deinit(void);
 // The caller adds it to its window root and destroys it on unload.
 Layer *header_bar_create(int width);
 
-// Registers which header layer is currently visible.
-void header_bar_set_active(Layer *hb);
+// Registers which header layer is currently visible. `show_elapsed` = true shows
+// the ticking elapsed time on the left while a timer runs (the activity list);
+// false always shows the app title (the hero, whose card already shows elapsed).
+void header_bar_set_active(Layer *hb, bool show_elapsed);
 
 // Marks the active header dirty (clock/elapsed changed). Safe if none.
 void header_bar_refresh(void);

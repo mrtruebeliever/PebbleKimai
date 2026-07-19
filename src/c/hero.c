@@ -170,7 +170,7 @@ static void window_load(Window *window) {
 }
 
 static void window_appear(Window *window) {
-  header_bar_set_active(s_header);
+  header_bar_set_active(s_header, false);   // the card shows elapsed; header keeps the title
   if (!s_tick) { s_tick = app_timer_register(1000, second_tick, NULL); }
   if (touch_service_is_enabled()) { touch_service_subscribe(touch_handler, NULL); }
   if (s_body) { layer_mark_dirty(s_body); }

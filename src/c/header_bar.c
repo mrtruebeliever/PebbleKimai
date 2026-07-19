@@ -4,6 +4,7 @@
 
 static GBitmap *s_icon   = NULL;   // stopwatch shown at the far left of the bar
 static Layer   *s_active = NULL;   // the header currently on screen
+static bool     s_show_elapsed = true;  // show ticking elapsed vs. the app title
 
 static void header_update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
@@ -37,10 +38,10 @@ static void header_update(Layer *layer, GContext *ctx) {
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentRight, NULL);
 
   // Between the icon and the clock: the ticking elapsed time while a timer runs
-  // (the stopwatch icon already brands the bar), the app title otherwise.
+  // (only where the window asked for it), otherwise the app title.
   TimerState *tm = data_timer();
   char left_buf[24];
-  if (tm->status == TIMER_RUNNING) {
+  if (tm->status == TIMER_RUNNING && s_show_elapsed) {
     data_timer_elapsed_str(left_buf, sizeof(left_buf));
   } else {
     snprintf(left_buf, sizeof(left_buf), "Kimai");
@@ -69,8 +70,9 @@ Layer *header_bar_create(int width) {
   return layer;
 }
 
-void header_bar_set_active(Layer *hb) {
+void header_bar_set_active(Layer *hb, bool show_elapsed) {
   s_active = hb;
+  s_show_elapsed = show_elapsed;
   if (s_active) { layer_mark_dirty(s_active); }
 }
 
