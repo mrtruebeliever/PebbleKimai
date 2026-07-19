@@ -185,7 +185,14 @@ static void apply_timer(DictionaryIterator *iter) {
   Tuple *t;
   if ((t = dict_find(iter, MESSAGE_KEY_TIMER_TS_ID)))  tm->ts_id  = tuple_int(t);
   if ((t = dict_find(iter, MESSAGE_KEY_TIMER_ACT_ID))) tm->act_id = tuple_int(t);
-  if ((t = dict_find(iter, MESSAGE_KEY_TIMER_BEGIN)))  tm->begin  = (time_t)tuple_int(t);
+  if ((t = dict_find(iter, MESSAGE_KEY_TIMER_BEGIN))) {
+    tm->begin = (time_t)tuple_int(t);
+    // Kimai rounds the begin down to the whole minute, and the server clock can
+    // run slightly ahead, so the reported begin is sometimes in the future. Count
+    // from now in that case instead of freezing the elapsed at 0:00:00.
+    time_t now = time(NULL);
+    if (tm->begin > now) { tm->begin = now; }
+  }
   if ((t = dict_find(iter, MESSAGE_KEY_TIMER_ACT_NAME))) {
     strncpy(tm->act_name, t->value->cstring, ACT_NAME_LEN - 1);
     tm->act_name[ACT_NAME_LEN - 1] = '\0';
