@@ -280,18 +280,21 @@ function startActivity(actId, projectId, begin) {
   });
 }
 
-// Stops every active timesheet, then calls cb(okAll).
+// Stops every active timesheet, then calls cb(okAll, status). `status` carries
+// the failing request's HTTP status (0 = network) so the watch can show the real
+// error instead of a blanket "no connection".
 function stopAllActive(cb) {
   request('GET', '/api/timesheets/active', null, function (ok, status, data) {
     if (!ok || !Array.isArray(data)) { cb(false, status); return; }
     var i = 0;
     var failed = 0;
+    var failStatus = 0;
     function next() {
-      if (i >= data.length) { cb(failed === 0, 0); return; }
+      if (i >= data.length) { cb(failed === 0, failStatus); return; }
       var id = data[i].id;
       i++;
       request('PATCH', '/api/timesheets/' + id + '/stop', null, function (ok2, s2) {
-        if (!ok2) { failed++; }
+        if (!ok2) { failed++; failStatus = s2; }
         next();
       });
     }
