@@ -7,6 +7,10 @@ static void (*s_error_cb)(int) = NULL;
 
 static int s_lang = LANG_EN;
 
+// Announced size of the project stream in flight, so the active project is
+// reconciled exactly once when the whole list has arrived (-1 = no stream).
+static int s_proj_total = -1;
+
 void config_set_change_callback(void (*cb)(void)) { s_change_cb = cb; }
 void config_set_error_callback(void (*cb)(int))   { s_error_cb = cb; }
 
@@ -121,10 +125,13 @@ static void apply_project(DictionaryIterator *iter) {
   }
 }
 
-// After the project list changes, refresh the active project's cached name and
-// customer from the authoritative list (the id is the source of truth; Clay's
-// DEFAULT_PROJECT only carries an id). If nothing is active yet, adopt the first
-// project so the watch has a sensible starting context.
+// Once the whole project list has arrived, refresh the active project's cached
+// name and customer from the authoritative list (the id is the source of truth;
+// Clay's DEFAULT_PROJECT only carries an id). Only when the active project is
+// genuinely absent (never set, or deleted server-side) do we adopt the first
+// project. This MUST run only on a complete list: reconciling mid-stream would
+// wrongly fall back to the first project before the active one has streamed in,
+// clobbering the persisted choice.
 static void reconcile_active_project(void) {
   if (data_project_count() == 0) return;
 
@@ -199,22 +206,26 @@ void config_inbox_received(DictionaryIterator *iter, void *context) {
   }
 
   // Head messages reset a list; per-record items arrive in later messages.
-  bool project_stream = false;
   if ((t = dict_find(iter, MESSAGE_KEY_ACT_COUNT))) {
     data_clear_activities();
   }
   if ((t = dict_find(iter, MESSAGE_KEY_PROJ_COUNT))) {
     data_clear_projects();
     data_set_project_load_state(LOAD_OK);
-    project_stream = true;
+    s_proj_total = tuple_int(t);
   }
 
   apply_activity(iter);
-  if (dict_find(iter, MESSAGE_KEY_PROJ_INDEX)) { apply_project(iter); project_stream = true; }
+  if (dict_find(iter, MESSAGE_KEY_PROJ_INDEX)) { apply_project(iter); }
   apply_timer(iter);
 
-  // Keep the active project's cached name/customer in step with the live list.
-  if (project_stream) { reconcile_active_project(); }
+  // Reconcile the active project only once the whole list has arrived (see the
+  // warning on reconcile_active_project). An empty list (total 0) completes here
+  // at the head message.
+  if (s_proj_total >= 0 && data_project_count() >= s_proj_total) {
+    reconcile_active_project();
+    s_proj_total = -1;
+  }
 
   if ((t = dict_find(iter, MESSAGE_KEY_ERROR_CODE)) && s_error_cb) {
     s_error_cb(tuple_int(t));
