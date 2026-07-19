@@ -14,6 +14,7 @@ static Window   *s_window = NULL;
 static Layer    *s_body = NULL;
 static Layer    *s_header = NULL;
 static AppTimer *s_tick = NULL;
+static bool      s_shown = false;   // hero is the visible window
 
 // Rajdhani (the Demi watchface display font) for the large hero text.
 static GFont s_f_name   = NULL;   // activity name / CTA
@@ -173,12 +174,21 @@ static void touch_handler(const TouchEvent *event, void *context) {
 }
 
 // --- Second tick (elapsed repaint) -------------------------------------------
+// Only runs while a timer is actually running and the hero is on screen, so an
+// idle open app does not wake the CPU once a second for nothing.
 
 static void second_tick(void *data) {
+  s_tick = NULL;
+  if (!s_shown || data_timer()->status != TIMER_RUNNING) { return; }
+  if (s_body) { layer_mark_dirty(s_body); }
+  header_bar_refresh();
   s_tick = app_timer_register(1000, second_tick, NULL);
-  if (data_timer()->status == TIMER_RUNNING) {
-    if (s_body) { layer_mark_dirty(s_body); }
-    header_bar_refresh();
+}
+
+// Starts the ticker if a timer is running and the hero is visible (idempotent).
+static void ensure_tick(void) {
+  if (s_shown && !s_tick && data_timer()->status == TIMER_RUNNING) {
+    s_tick = app_timer_register(1000, second_tick, NULL);
   }
 }
 
@@ -204,7 +214,8 @@ static void window_load(Window *window) {
 
 static void window_appear(Window *window) {
   header_bar_set_active(s_header, false);   // the card shows elapsed; header keeps the title
-  if (!s_tick) { s_tick = app_timer_register(1000, second_tick, NULL); }
+  s_shown = true;
+  ensure_tick();
   if (touch_service_is_enabled() && config_touch_enabled()) {
     touch_service_subscribe(touch_handler, NULL);
   }
@@ -212,6 +223,7 @@ static void window_appear(Window *window) {
 }
 
 static void window_disappear(Window *window) {
+  s_shown = false;
   if (s_tick) { app_timer_cancel(s_tick); s_tick = NULL; }
   touch_service_unsubscribe();
 }
@@ -241,6 +253,7 @@ Window *hero_window(void) {
 void hero_reload(void) {
   if (s_body) { layer_mark_dirty(s_body); }
   header_bar_refresh();
+  ensure_tick();   // a timer may have just started while the hero is up
 }
 
 void hero_destroy(void) {

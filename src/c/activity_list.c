@@ -19,6 +19,7 @@ static Window    *s_window = NULL;
 static MenuLayer *s_menu = NULL;
 static Layer     *s_header = NULL;
 static AppTimer  *s_tick = NULL;              // 1 s repaint while a timer runs
+static bool       s_shown = false;            // the list is the visible window
 static GRect      s_row_rect[ROW_RECT_MAX];   // last on-screen rect per row (touch)
 
 // The list is drawable once loaded, or while a (re)load streams rows in.
@@ -182,9 +183,18 @@ static bool    s_scrolled;       // this gesture already scrolled (=> not a tap)
 
 static void tap_row(int16_t x, int16_t y) {
   GPoint p = GPoint(x, y);
+  // Ignore stored rects that fall outside the menu's current viewport: rows that
+  // scrolled off keep a stale rect, and only the visible rows are redrawn.
+  Layer *ml = menu_layer_get_layer(s_menu);
+  GRect vis = layer_convert_rect_to_screen(ml, layer_get_bounds(ml));
+  int vtop = vis.origin.y, vbot = vis.origin.y + vis.size.h;
+
   int n = get_num_rows(s_menu, 0, NULL);
   for (int r = 0; r < n && r < ROW_RECT_MAX; r++) {
-    if (grect_contains_point(&s_row_rect[r], &p)) {
+    GRect rr = s_row_rect[r];
+    int cy = rr.origin.y + rr.size.h / 2;
+    if (cy < vtop || cy >= vbot) { continue; }
+    if (grect_contains_point(&rr, &p)) {
       menu_layer_set_selected_index(s_menu, (MenuIndex){ .section = 0, .row = r },
                                     MenuRowAlignNone, false);
       list_activate(r);
@@ -231,12 +241,20 @@ static void touch_handler(const TouchEvent *event, void *context) {
 }
 
 // --- Second tick (elapsed time repaint) --------------------------------------
+// Runs only while a timer is running and the list is on screen, so an idle open
+// list does not wake the CPU once a second for nothing.
 
 static void second_tick(void *data) {
+  s_tick = NULL;
+  if (!s_shown || data_timer()->status != TIMER_RUNNING) { return; }
+  layer_mark_dirty(menu_layer_get_layer(s_menu));
+  header_bar_refresh();
   s_tick = app_timer_register(1000, second_tick, NULL);
-  if (data_timer()->status == TIMER_RUNNING) {
-    layer_mark_dirty(menu_layer_get_layer(s_menu));
-    header_bar_refresh();
+}
+
+static void ensure_tick(void) {
+  if (s_shown && !s_tick && data_timer()->status == TIMER_RUNNING) {
+    s_tick = app_timer_register(1000, second_tick, NULL);
   }
 }
 
@@ -265,15 +283,15 @@ static void window_load(Window *window) {
 
 static void window_appear(Window *window) {
   header_bar_set_active(s_header, true);   // list header shows the ticking elapsed
-  if (!s_tick) {
-    s_tick = app_timer_register(1000, second_tick, NULL);
-  }
+  s_shown = true;
+  ensure_tick();
   if (touch_service_is_enabled() && config_touch_enabled()) {
     touch_service_subscribe(touch_handler, NULL);
   }
 }
 
 static void window_disappear(Window *window) {
+  s_shown = false;
   if (s_tick) { app_timer_cancel(s_tick); s_tick = NULL; }
   touch_service_unsubscribe();
 }
@@ -303,6 +321,7 @@ void activity_list_reload(void) {
     menu_layer_reload_data(s_menu);
   }
   header_bar_refresh();
+  ensure_tick();   // a timer may have just started while the list is up
 }
 
 void activity_list_destroy(void) {
