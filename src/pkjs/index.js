@@ -37,7 +37,9 @@ var MAX_PROJECTS = 16;
 
 function getBase() {
   var u = (localStorage.getItem('KIMAI_URL') || '').trim();
-  return u.replace(/\/+$/, '');
+  u = u.replace(/\/+$/, '');       // drop trailing slashes
+  u = u.replace(/\/api$/i, '');    // tolerate a trailing /api (we add it ourselves)
+  return u;
 }
 function getToken() { return (localStorage.getItem('KIMAI_TOKEN') || '').trim(); }
 function getDefProject() { return parseInt(localStorage.getItem('DEF_PROJECT'), 10) || 0; }
