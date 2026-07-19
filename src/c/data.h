@@ -4,6 +4,9 @@
 // Fixed capacities — no malloc on the watch.
 #define MAX_ACTIVITIES 32
 #define ACT_NAME_LEN   32
+#define MAX_PROJECTS   16
+#define PROJ_NAME_LEN  32
+#define CUST_NAME_LEN  32
 
 // Load state of the activity list.
 #define LOAD_LOADING       0
@@ -30,6 +33,16 @@ typedef struct {
   char name[ACT_NAME_LEN];
 } Activity;
 
+// One Kimai project, with its owning customer (streamed from the phone). The
+// customer fields let the watch group projects by customer without a second
+// endpoint (Kimai's /api/projects already carries parentTitle + customer id).
+typedef struct {
+  int  id;
+  char name[PROJ_NAME_LEN];
+  int  customer_id;
+  char customer[CUST_NAME_LEN];
+} Project;
+
 // The (single) running-timer state. The server is the source of truth: `begin`
 // is the server-reported start as epoch seconds, so elapsed time is always
 // recomputed from it and local clock drift never accumulates. `pending` marks
@@ -52,6 +65,30 @@ int       data_activity_count(void);
 void      data_set_activity_count(int n);  // clamps to MAX_ACTIVITIES
 void      data_clear_activities(void);
 Activity *data_activity(int i);            // by index, NULL if out of range
+
+// --- Projects ----------------------------------------------------------------
+// Separate load state so the project list can (re)load without disturbing the
+// activity list's own loading/error state.
+int       data_project_load_state(void);
+void      data_set_project_load_state(int s);
+int       data_project_count(void);
+void      data_set_project_count(int n);   // clamps to MAX_PROJECTS
+void      data_clear_projects(void);
+Project  *data_project(int i);             // by index, NULL if out of range
+Project  *data_project_by_id(int id);      // NULL if not found
+// Number of distinct customers across the loaded projects.
+int       data_customer_count(void);
+
+// --- Active context (persisted; see config.c) --------------------------------
+// The project time is booked on, and the customer filter for the project picker.
+int         data_active_project_id(void);
+const char *data_active_project_name(void);
+int         data_active_project_customer_id(void);
+const char *data_active_project_customer(void);
+int         data_active_customer_id(void);
+const char *data_active_customer_name(void);
+void data_set_active_project(int id, const char *name, int customer_id, const char *customer);
+void data_set_active_customer(int id, const char *name);
 
 // --- Timer -------------------------------------------------------------------
 TimerState *data_timer(void);

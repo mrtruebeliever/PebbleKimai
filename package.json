@@ -1,7 +1,7 @@
 {
   "name": "pebblekimai",
   "author": "mrtruebeliever",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "license": "MIT",
   "keywords": ["pebble-app"],
   "private": true,
@@ -30,11 +30,19 @@
       "KIMAI_URL",
       "KIMAI_TOKEN",
       "DEFAULT_PROJECT",
+      "DEFAULT_CUSTOMER",
+      "LANGUAGE",
       "LOAD_STATE",
       "ACT_COUNT",
       "ACT_INDEX",
       "ACT_ID",
       "ACT_NAME",
+      "PROJ_COUNT",
+      "PROJ_INDEX",
+      "PROJ_ID",
+      "PROJ_NAME",
+      "PROJ_CUSTOMER_ID",
+      "PROJ_CUSTOMER_NAME",
       "TIMER_STATUS",
       "TIMER_TS_ID",
       "TIMER_ACT_ID",
@@ -42,13 +50,22 @@
       "TIMER_BEGIN",
       "ERROR_CODE",
       "REQUEST_ACTIVITIES",
+      "REQUEST_PROJECTS",
       "REQUEST_TIMER",
+      "PROJECT_ID",
       "START_ACTIVITY",
       "STOP_ACTIVITY",
       "SWITCH_ACTIVITY"
     ],
     "resources": {
-      "media": []
+      "media": [
+        {
+          "type": "png",
+          "name": "IMG_MENU_ICON",
+          "file": "images/menu_icon.png",
+          "menuIcon": true
+        }
+      ]
     }
   }
 }

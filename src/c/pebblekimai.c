@@ -3,6 +3,7 @@
 #include "data.h"
 #include "activity_list.h"
 #include "header_bar.h"
+#include "i18n.h"
 #include "toast.h"
 
 static void on_data_changed(void) {
@@ -13,11 +14,11 @@ static void on_data_changed(void) {
 // authoritative TIMER_STATUS, so the UI only needs to tell the user.
 static void on_error(int code) {
   switch (code) {
-    case ERR_NETWORK:    toast_show("No connection");        break;
-    case ERR_AUTH:       toast_show("Check API token");      break;
-    case ERR_CONFLICT:   toast_show("Timer conflict");       break;
-    case ERR_NO_PROJECT: toast_show("No project in Kimai");  break;
-    default:             toast_show("Kimai error");          break;
+    case ERR_NETWORK:    toast_show(i18n(STR_TOAST_NETWORK));    break;
+    case ERR_AUTH:       toast_show(i18n(STR_TOAST_AUTH));       break;
+    case ERR_CONFLICT:   toast_show(i18n(STR_TOAST_CONFLICT));   break;
+    case ERR_NO_PROJECT: toast_show(i18n(STR_TOAST_NOPROJECT));  break;
+    default:             toast_show(i18n(STR_TOAST_ERROR));      break;
   }
 }
 
@@ -32,6 +33,7 @@ static void outbox_failed(DictionaryIterator *iter, AppMessageResult reason, voi
 }
 
 static void init(void) {
+  config_load();            // language + persisted active project/customer
   header_bar_init();
 
   config_set_change_callback(on_data_changed);
@@ -42,6 +44,12 @@ static void init(void) {
   app_message_open(1024, 256);
 
   window_stack_push(activity_list_window(), true);
+
+  // Drive the phone from the watch's persisted context: load the project list
+  // and the active project's activities. (The phone's 'ready' handler also does
+  // an initial load as a fallback if these are dropped before JS starts.)
+  config_request_projects();
+  config_request_activities();
 }
 
 static void deinit(void) {

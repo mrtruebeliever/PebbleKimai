@@ -26,17 +26,19 @@ static void header_update(Layer *layer, GContext *ctx) {
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentRight, NULL);
 
   // Left: the ticking elapsed time while a timer runs, the app title otherwise.
+  // The "running" dot is drawn (not a glyph) so it renders in every system font.
   TimerState *tm = data_timer();
-  char left_buf[24];
   if (tm->status == TIMER_RUNNING) {
+    graphics_context_set_fill_color(ctx, GColorBlack);
+    graphics_fill_circle(ctx, GPoint(11, 13), 4);
     char elapsed[16];
     data_timer_elapsed_str(elapsed, sizeof(elapsed));
-    snprintf(left_buf, sizeof(left_buf), "\xE2\x97\x8F %s", elapsed);  // "● h:mm:ss"
+    graphics_draw_text(ctx, elapsed, f18, GRect(20, 4, time_left - 24, 20),
+                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   } else {
-    snprintf(left_buf, sizeof(left_buf), "Kimai");
+    graphics_draw_text(ctx, "Kimai", f18, GRect(6, 4, time_left - 12, 20),
+                       GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
-  graphics_draw_text(ctx, left_buf, f18, GRect(6, 4, time_left - 12, 20),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {

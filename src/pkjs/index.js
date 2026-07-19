@@ -1,10 +1,17 @@
 var Clay = require('pebble-clay');
-var buildConfig = require('./config').buildConfig;
+var i18n = require('./i18n');
+var buildConfig = i18n.buildConfig;
 var keys = require('message_keys');
 
+// LANG stores the raw setting: '255' = Automatic (follow watch locale), or '0'..'4'.
+function getLangRaw() { var v = localStorage.getItem('LANG'); return (v == null || v === '') ? '255' : v; }
+// Language to render the settings page in (Automatic falls back to English).
+function getPageLang() { var r = parseInt(getLangRaw(), 10); return (r >= 0 && r < 5) ? r : 0; }
+
 // Clay is driven manually so the settings page can be rebuilt with the live
-// project list each time it opens (autoHandleEvents:false).
-var clay = new Clay(buildConfig(null, settingsSnapshot()), null, { autoHandleEvents: false });
+// project/customer list (and language) each time it opens (autoHandleEvents:false).
+var clay = new Clay(buildConfig(getPageLang(), null, null, { langRaw: getLangRaw() }), null,
+  { autoHandleEvents: false });
 
 // Load states (mirror data.h).
 var LOAD_LOADING = 0;
@@ -24,6 +31,7 @@ var ERR_SERVER = 4;
 var ERR_NO_PROJECT = 5;
 
 var MAX_ACTIVITIES = 32;
+var MAX_PROJECTS = 16;
 
 // --- Persisted phone-side state (never sent to the watch) --------------------
 
@@ -33,9 +41,22 @@ function getBase() {
 }
 function getToken() { return (localStorage.getItem('KIMAI_TOKEN') || '').trim(); }
 function getDefProject() { return parseInt(localStorage.getItem('DEF_PROJECT'), 10) || 0; }
+function getDefCustomer() { return parseInt(localStorage.getItem('DEF_CUSTOMER'), 10) || 0; }
 function getAllProjects() {
   try { return JSON.parse(localStorage.getItem('ALL_PROJECTS') || '[]'); }
   catch (e) { return []; }
+}
+// Distinct customers derived from the cached project list, order preserved.
+function getAllCustomers() {
+  var seen = {};
+  var out = [];
+  getAllProjects().forEach(function (p) {
+    if (p.customerId && !seen[p.customerId]) {
+      seen[p.customerId] = true;
+      out.push({ id: p.customerId, name: p.customer || String(p.customerId) });
+    }
+  });
+  return out;
 }
 function configured() { return !!(getBase() && getToken()); }
 
@@ -121,19 +142,73 @@ function streamActivities(activities) {
   }, function () { console.log('act head send failed'); });
 }
 
+// Streams the project list (id, name, customer id + name) to the watch.
+function streamProjects(projects) {
+  var count = Math.min(projects.length, MAX_PROJECTS);
+  var head = {};
+  head[keys.PROJ_COUNT] = count;
+  Pebble.sendAppMessage(head, function () {
+    var i = 0;
+    function next() {
+      if (i >= count) return;
+      var p = projects[i];
+      var msg = {};
+      msg[keys.PROJ_INDEX] = i;
+      msg[keys.PROJ_ID] = p.id;
+      msg[keys.PROJ_NAME] = String(p.name).substring(0, 31);
+      msg[keys.PROJ_CUSTOMER_ID] = p.customerId || 0;
+      msg[keys.PROJ_CUSTOMER_NAME] = String(p.customer || '').substring(0, 31);
+      Pebble.sendAppMessage(msg, function () { i++; next(); },
+        function () { console.log('proj ' + i + ' send failed'); i++; next(); });
+    }
+    next();
+  }, function () { console.log('proj head send failed'); });
+}
+
+// Normalizes a Kimai project record to the fields the watch/settings need.
+function normProject(p) {
+  return { id: p.id, name: String(p.name), customerId: p.customer || 0,
+           customer: String(p.parentTitle || '') };
+}
+
 // --- Loads -------------------------------------------------------------------
 
-// Fetches the global activities (project == null). Tries the server-side
-// `globals` filter first; falls back to fetching all and filtering here.
-function loadActivities() {
+// Fetches the project list, caches it (for the settings page + customer list)
+// and streams it to the watch.
+function loadProjects() {
+  if (!configured()) { return; }
+  request('GET', '/api/projects?visible=1', null, function (ok, status, data) {
+    if (!ok || !Array.isArray(data)) { console.log('loadProjects failed ' + status); return; }
+    var projects = data.map(normProject);
+    localStorage.setItem('ALL_PROJECTS', JSON.stringify(projects));
+    streamProjects(projects);
+  });
+}
+
+// The id of a Kimai activity's project (null/undefined for a global activity).
+function activityProjectId(a) {
+  var ap = a.project;
+  if (ap == null) { return null; }
+  return (typeof ap === 'object') ? ap.id : ap;
+}
+
+// Fetches the activities available for `projectId`: the global ones plus the
+// ones bound to that project (globals first). Filtered client-side so it works
+// regardless of which query-parameter combination the instance supports.
+function loadActivities(projectId) {
   if (!configured()) { sendLoad(LOAD_UNCONFIGURED); return; }
   sendLoad(LOAD_LOADING);
-  request('GET', '/api/activities?globals=true&visible=1', null, function (ok, status, data) {
-    if (ok && Array.isArray(data)) { streamActivities(data); return; }
-    request('GET', '/api/activities?visible=1', null, function (ok2, s2, d2) {
-      if (!ok2 || !Array.isArray(d2)) { sendLoad(LOAD_ERROR); return; }
-      streamActivities(d2.filter(function (a) { return !a.project; }));
+  var pid = parseInt(projectId, 10) || 0;
+  request('GET', '/api/activities?visible=1', null, function (ok, status, data) {
+    if (!ok || !Array.isArray(data)) { sendLoad(LOAD_ERROR); return; }
+    var globals = [];
+    var bound = [];
+    data.forEach(function (a) {
+      var apid = activityProjectId(a);
+      if (apid == null) { globals.push(a); }
+      else if (pid && apid === pid) { bound.push(a); }
     });
+    streamActivities(globals.concat(bound));
   });
 }
 
@@ -153,9 +228,11 @@ function loadTimer() {
 // Every mutation ends by re-fetching /timesheets/active, so the watch always
 // converges on the server's state (also after an error).
 
-// Runs cb(projectId) with the project to book on: the configured default, or
-// the first visible project as a fallback. cb(0) when none can be found.
-function withProject(cb) {
+// Runs cb(projectId) with the project to book on: the one the watch sent, else
+// the configured default, else the first visible project. cb(0) when none found.
+function withProject(preferredId, cb) {
+  var pid = parseInt(preferredId, 10) || 0;
+  if (pid) { cb(pid); return; }
   var configuredId = getDefProject();
   if (configuredId) { cb(configuredId); return; }
   request('GET', '/api/projects?visible=1', null, function (ok, status, data) {
@@ -170,12 +247,12 @@ function stripOffset(s) {
   return String(s || '').replace(/(Z|[+-]\d{2}:?\d{2})$/, '');
 }
 
-function startActivity(actId, begin) {
-  withProject(function (projectId) {
-    if (!projectId) { sendError(ERR_NO_PROJECT); loadTimer(); return; }
+function startActivity(actId, projectId, begin) {
+  withProject(projectId, function (pid) {
+    if (!pid) { sendError(ERR_NO_PROJECT); loadTimer(); return; }
     // No `begin` normally: the server stamps "now" in the Kimai user's own
     // timezone, which sidesteps phone-vs-server timezone mismatches entirely.
-    var body = { project: projectId, activity: actId };
+    var body = { project: pid, activity: actId };
     if (begin) { body.begin = begin; }
     request('POST', '/api/timesheets', body, function (ok, status) {
       if (ok) { loadTimer(); return; }
@@ -187,7 +264,7 @@ function startActivity(actId, begin) {
         request('GET', '/api/timesheets?size=1', null, function (ok2, s2, data) {
           var end = ok2 && Array.isArray(data) && data[0] && data[0].end;
           if (end && new Date(end).getTime() > Date.now() - 120000) {
-            startActivity(actId, stripOffset(end));
+            startActivity(actId, pid, stripOffset(end));
           } else {
             sendError(errorCode(status));
             loadTimer();
@@ -227,33 +304,38 @@ function stopActivity() {
   });
 }
 
-function switchActivity(actId) {
+function switchActivity(actId, projectId) {
   stopAllActive(function (ok, status) {
     if (!ok) { sendError(errorCode(status)); loadTimer(); return; }
-    startActivity(actId);
+    startActivity(actId, projectId);
   });
 }
 
 // --- Lifecycle ---------------------------------------------------------------
 
 Pebble.addEventListener('ready', function () {
-  loadActivities();
+  // Initial fallback load; the watch also drives these from its persisted context.
+  loadProjects();
+  loadActivities(getDefProject());
   loadTimer();
 });
 
 Pebble.addEventListener('appmessage', function (e) {
   var d = (e && e.payload) || {};
-  if (d.REQUEST_ACTIVITIES !== undefined) {
-    loadActivities();
+  var projectId = d.PROJECT_ID;
+  if (d.REQUEST_PROJECTS !== undefined) {
+    loadProjects();
+  } else if (d.REQUEST_ACTIVITIES !== undefined) {
+    loadActivities(projectId);
     loadTimer();
   } else if (d.REQUEST_TIMER !== undefined) {
     loadTimer();
   } else if (d.START_ACTIVITY !== undefined) {
-    startActivity(parseInt(d.START_ACTIVITY, 10));
+    startActivity(parseInt(d.START_ACTIVITY, 10), projectId);
   } else if (d.STOP_ACTIVITY !== undefined) {
     stopActivity();
   } else if (d.SWITCH_ACTIVITY !== undefined) {
-    switchActivity(parseInt(d.SWITCH_ACTIVITY, 10));
+    switchActivity(parseInt(d.SWITCH_ACTIVITY, 10), projectId);
   }
 });
 
@@ -262,27 +344,28 @@ function settingsSnapshot() {
   return {
     url: getBase(),
     token: getToken(),
-    defProject: String(getDefProject() || '')
+    langRaw: getLangRaw(),
+    defProject: String(getDefProject() || ''),
+    defCustomer: String(getDefCustomer() || '')
   };
 }
 
-// Rebuild the settings page with the live project list, then open it.
+// Rebuild the settings page with the live project/customer list, then open it.
 Pebble.addEventListener('showConfiguration', function () {
   if (!configured()) {
-    clay = new Clay(buildConfig(null, settingsSnapshot()), null, { autoHandleEvents: false });
+    clay = new Clay(buildConfig(getPageLang(), null, null, settingsSnapshot()), null,
+      { autoHandleEvents: false });
     Pebble.openURL(clay.generateUrl());
     return;
   }
   request('GET', '/api/projects?visible=1', null, function (ok, status, data) {
     if (ok && Array.isArray(data)) {
-      localStorage.setItem('ALL_PROJECTS', JSON.stringify(data.map(function (p) {
-        return { id: p.id, name: String(p.name) };
-      })));
+      localStorage.setItem('ALL_PROJECTS', JSON.stringify(data.map(normProject)));
     } else {
       console.log('showConfig: GET /api/projects failed (' + status + ')');
     }
-    clay = new Clay(buildConfig(getAllProjects(), settingsSnapshot()), null,
-      { autoHandleEvents: false });
+    clay = new Clay(buildConfig(getPageLang(), getAllProjects(), getAllCustomers(), settingsSnapshot()),
+      null, { autoHandleEvents: false });
     Pebble.openURL(clay.generateUrl());
   });
 });
@@ -306,14 +389,32 @@ Pebble.addEventListener('webviewclosed', function (e) {
   var url = (pick('KIMAI_URL') || '').toString().trim();
   var token = (pick('KIMAI_TOKEN') || '').toString().trim();
   var defProject = parseInt(pick('DEFAULT_PROJECT'), 10) || 0;
+  var defCustomer = parseInt(pick('DEFAULT_CUSTOMER'), 10) || 0;
+  var lang = parseInt(pick('LANGUAGE'), 10);
+  if (isNaN(lang)) { lang = 255; }  // 255 = Automatic (follow watch locale)
   // Token value is never logged.
   console.log('webviewclosed: urlSet=' + !!url + ' tokenLen=' + token.length +
-              ' defProject=' + defProject);
+              ' defProject=' + defProject + ' defCustomer=' + defCustomer + ' lang=' + lang);
 
   localStorage.setItem('KIMAI_URL', url);
   localStorage.setItem('KIMAI_TOKEN', token);
+  localStorage.setItem('LANG', String(lang));
   localStorage.setItem('DEF_PROJECT', String(defProject || ''));
+  localStorage.setItem('DEF_CUSTOMER', String(defCustomer || ''));
 
-  loadActivities();
-  loadTimer();
+  // Language + booking defaults go to the watch (persisted there). A default of
+  // 0 (="first/all") is intentionally sent so the watch can ignore it.
+  var msg = {};
+  msg[keys.LANGUAGE] = lang;
+  msg[keys.DEFAULT_PROJECT] = defProject;
+  msg[keys.DEFAULT_CUSTOMER] = defCustomer;
+  Pebble.sendAppMessage(msg, function () {
+    loadProjects();
+    loadActivities(defProject || getDefProject());
+    loadTimer();
+  }, function () {
+    loadProjects();
+    loadActivities(defProject || getDefProject());
+    loadTimer();
+  });
 });
