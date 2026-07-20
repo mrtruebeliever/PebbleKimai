@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.2.0
+
+- **Activities bound to the active project now surface at the top of the
+  list**; the remaining global activities stay reachable below, dimmed so the
+  project's own activities stand out (a project with no bound activities
+  still shows everything at full color).
+- **Sorted by recent use.** Within each group, activities are ordered by how
+  much time was logged on them in the last 90 days (most-used first), so the
+  activities you actually track land within easy reach.
+- **Project / customer picker title bar.** The picker windows now show
+  "Project" or "Customer" at the top so it's clear which list is on screen.
+
 ## 2.1.0
 
 - **Hero start screen**: a landing card showing the running activity (name, big

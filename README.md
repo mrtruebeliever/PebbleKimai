@@ -18,7 +18,8 @@ the header bar; the Kimai server is always the source of truth.
   are booked on; long-press it to pick a **customer** (the project list then
   filters to that customer). Your latest choice is remembered on the watch.
 - List of the **global activities** plus any activities bound to the active
-  project.
+  project — the project's own activities surface on top (globals dimmed
+  below), each group ordered by most time tracked in the last 90 days.
 - **Start** with one press while idle; **stop** and **switch** ask for a single
   confirmation tap so a running timer is never killed by accident.
 - Optimistic UI: the timer starts ticking immediately, then reconciles with the

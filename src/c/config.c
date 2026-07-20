@@ -119,6 +119,9 @@ static void apply_activity(DictionaryIterator *iter) {
     strncpy(a->name, t->value->cstring, ACT_NAME_LEN - 1);
     a->name[ACT_NAME_LEN - 1] = '\0';
   }
+  if ((t = dict_find(iter, MESSAGE_KEY_ACT_PROJECT_ID))) {
+    a->project_id = tuple_int(t);
+  }
 }
 
 // --- Incoming: project stream ------------------------------------------------

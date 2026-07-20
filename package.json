@@ -1,7 +1,7 @@
 {
   "name": "pebblekimai",
   "author": "mrtruebeliever",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "license": "MIT",
   "keywords": ["pebble-app"],
   "private": true,
@@ -56,7 +56,8 @@
       "PROJECT_ID",
       "START_ACTIVITY",
       "STOP_ACTIVITY",
-      "SWITCH_ACTIVITY"
+      "SWITCH_ACTIVITY",
+      "ACT_PROJECT_ID"
     ],
     "resources": {
       "media": [

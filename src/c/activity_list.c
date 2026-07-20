@@ -35,6 +35,18 @@ static bool has_project_row(void) {
 }
 static int act_offset(void) { return has_project_row() ? 1 : 0; }
 
+// True once at least one loaded activity is bound to the active project. Used
+// to dim the remaining global activities so the project's own ones stand out
+// as the primary group — but only once there is a primary group to contrast
+// against; an all-global list stays full color.
+static bool any_project_bound(void) {
+  for (int i = 0; i < data_activity_count(); i++) {
+    Activity *a = data_activity(i);
+    if (a && a->project_id != 0) return true;
+  }
+  return false;
+}
+
 // --- MenuLayer callbacks ------------------------------------------------------
 
 static uint16_t get_num_rows(MenuLayer *menu, uint16_t section, void *context) {
@@ -112,8 +124,9 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
   TimerState *tm = data_timer();
   bool running = tm->status == TIMER_RUNNING && tm->act_id == a->id;
   bool selected = menu_layer_get_selected_index(s_menu).row == idx->row;
+  bool dim = !running && a->project_id == 0 && any_project_bound();
 
-  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_context_set_text_color(ctx, dim ? GColorDarkGray : GColorBlack);
   graphics_draw_text(ctx, a->name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
                      GRect(10, running ? 2 : (b.size.h - 32) / 2, b.size.w - 16, 28),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);

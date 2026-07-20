@@ -138,6 +138,7 @@ function streamActivities(activities) {
       msg[keys.ACT_INDEX] = i;
       msg[keys.ACT_ID] = a.id;
       msg[keys.ACT_NAME] = String(a.name).substring(0, 31);
+      msg[keys.ACT_PROJECT_ID] = a.projectId || 0;
       Pebble.sendAppMessage(msg, function () { i++; next(); },
         function () { console.log('act ' + i + ' send failed'); i++; next(); });
     }
@@ -195,23 +196,87 @@ function activityProjectId(a) {
   return (typeof ap === 'object') ? ap.id : ap;
 }
 
-// Fetches the activities available for `projectId`: the global ones plus the
-// ones bound to that project (globals first). Filtered client-side so it works
-// regardless of which query-parameter combination the instance supports.
+// --- Recent time-tracked per activity (drives the "most used first" sort) ----
+// Cached in memory with a short TTL so a normal start/stop/switch cycle (which
+// reloads the activity list) doesn't refetch timesheet history every time.
+
+var DURATION_WINDOW_DAYS = 90;
+var DURATION_TTL_MS = 15 * 60 * 1000;
+var DURATION_PAGE_SIZE = 500;   // Kimai's documented max page size
+var DURATION_MAX_PAGES = 3;     // safety cap: up to 1500 recent entries
+
+var s_durations = {};   // activity id -> total tracked seconds in the window
+var s_durationsAt = 0;  // ms timestamp of the last successful fetch
+
+// Fetches every timesheet since the window start, paginating while a full
+// page comes back (bounded by DURATION_MAX_PAGES).
+function fetchRecentTimesheets(cb) {
+  var begin = new Date(Date.now() - DURATION_WINDOW_DAYS * 86400000)
+    .toISOString().replace(/\.\d+Z$/, '');
+  var all = [];
+  var page = 1;
+  function next() {
+    var path = '/api/timesheets?begin=' + encodeURIComponent(begin) +
+      '&size=' + DURATION_PAGE_SIZE + '&page=' + page + '&orderBy=begin&order=DESC';
+    request('GET', path, null, function (ok, status, data) {
+      if (!ok || !Array.isArray(data)) { cb(all); return; }
+      all = all.concat(data);
+      if (data.length === DURATION_PAGE_SIZE && page < DURATION_MAX_PAGES) {
+        page++; next();
+      } else {
+        cb(all);
+      }
+    });
+  }
+  next();
+}
+
+// Refreshes s_durations if the cache is stale, then calls cb(). Failures leave
+// the previous (possibly empty) cache in place rather than blocking the list.
+function loadDurations(cb) {
+  if (Date.now() - s_durationsAt < DURATION_TTL_MS) { cb(); return; }
+  fetchRecentTimesheets(function (records) {
+    var sums = {};
+    records.forEach(function (r) {
+      var actId = (typeof r.activity === 'object') ? r.activity.id : r.activity;
+      var dur = r.duration;
+      if (actId == null || typeof dur !== 'number' || dur <= 0) { return; }
+      sums[actId] = (sums[actId] || 0) + dur;
+    });
+    s_durations = sums;
+    s_durationsAt = Date.now();
+    cb();
+  });
+}
+
+function byDurationDesc(x, y) { return y.duration - x.duration; }
+
+// Fetches the activities available for `projectId`: the ones bound to that
+// project first, then the global ones (each group ordered by most time
+// tracked in the last DURATION_WINDOW_DAYS days, descending). Filtered
+// client-side so it works regardless of which query-parameter combination
+// the instance supports.
 function loadActivities(projectId) {
   if (!configured()) { sendLoad(LOAD_UNCONFIGURED); return; }
   sendLoad(LOAD_LOADING);
   var pid = parseInt(projectId, 10) || 0;
-  request('GET', '/api/activities?visible=1', null, function (ok, status, data) {
-    if (!ok || !Array.isArray(data)) { sendLoad(LOAD_ERROR); return; }
-    var globals = [];
-    var bound = [];
-    data.forEach(function (a) {
-      var apid = activityProjectId(a);
-      if (apid == null) { globals.push(a); }
-      else if (pid && apid === pid) { bound.push(a); }
+  loadDurations(function () {
+    request('GET', '/api/activities?visible=1', null, function (ok, status, data) {
+      if (!ok || !Array.isArray(data)) { sendLoad(LOAD_ERROR); return; }
+      var globals = [];
+      var bound = [];
+      data.forEach(function (a) {
+        var apid = activityProjectId(a);
+        var isBound = apid != null && pid && apid === pid;
+        if (apid != null && !isBound) { return; }  // bound to a different project: not shown
+        var item = { id: a.id, name: a.name, projectId: isBound ? apid : 0,
+                     duration: s_durations[a.id] || 0 };
+        (isBound ? bound : globals).push(item);
+      });
+      bound.sort(byDurationDesc);
+      globals.sort(byDurationDesc);
+      streamActivities(bound.concat(globals));
     });
-    streamActivities(globals.concat(bound));
   });
 }
 

@@ -2,6 +2,7 @@
 #include "activity_list.h"
 #include "config.h"
 #include "data.h"
+#include "header_bar.h"
 #include "i18n.h"
 #include "theme.h"
 #include "touch_nav.h"
@@ -11,7 +12,13 @@ typedef enum { MODE_PROJECTS, MODE_CUSTOMERS } PickMode;
 
 static Window    *s_window = NULL;
 static MenuLayer *s_menu = NULL;
+static Layer     *s_header = NULL;
 static PickMode   s_mode = MODE_PROJECTS;
+
+// The title bar reflects which list is showing (localized "Project"/"Customer").
+static void refresh_title(void) {
+  header_bar_set_title(i18n(s_mode == MODE_PROJECTS ? STR_PROJECT : STR_CUSTOMER));
+}
 
 // Rebuilt on each (re)load from the live project list.
 static int  s_proj_idx[MAX_PROJECTS];               // data-project indices, filtered
@@ -81,6 +88,7 @@ static void activate(int row) {
     rebuild_lists();
     menu_layer_reload_data(s_menu);
     menu_layer_set_selected_index(s_menu, (MenuIndex){0, 0}, MenuRowAlignTop, false);
+    refresh_title();
   }
 }
 
@@ -187,7 +195,8 @@ static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
   GRect b = layer_get_bounds(root);
 
-  s_menu = menu_layer_create(b);
+  s_menu = menu_layer_create(
+      GRect(0, HEADER_BAR_HEIGHT, b.size.w, b.size.h - HEADER_BAR_HEIGHT));
   menu_layer_set_callbacks(s_menu, NULL, (MenuLayerCallbacks){
     .get_num_rows = get_num_rows,
     .get_cell_height = get_cell_height,
@@ -198,9 +207,14 @@ static void window_load(Window *window) {
   menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
   menu_layer_set_click_config_onto_window(s_menu, window);
   layer_add_child(root, menu_layer_get_layer(s_menu));
+
+  s_header = header_bar_create(b.size.w);
+  layer_add_child(root, s_header);
 }
 
 static void window_appear(Window *window) {
+  header_bar_set_active(s_header, false);
+  refresh_title();
   if (touch_service_is_enabled() && config_touch_enabled()) {
     touch_service_subscribe(touch_handler, NULL);
   }
@@ -212,6 +226,7 @@ static void window_disappear(Window *window) {
 
 static void window_unload(Window *window) {
   if (s_menu) { menu_layer_destroy(s_menu); s_menu = NULL; }
+  if (s_header) { layer_destroy(s_header); s_header = NULL; }
   window_destroy(s_window);
   s_window = NULL;
 }

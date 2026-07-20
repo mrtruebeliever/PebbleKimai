@@ -2,9 +2,10 @@
 #include "data.h"
 #include "theme.h"
 
-static GBitmap *s_icon   = NULL;   // stopwatch shown at the far left of the bar
-static Layer   *s_active = NULL;   // the header currently on screen
-static bool     s_show_elapsed = true;  // show ticking elapsed vs. the app title
+static GBitmap   *s_icon   = NULL;   // stopwatch shown at the far left of the bar
+static Layer     *s_active = NULL;   // the header currently on screen
+static bool       s_show_elapsed = true;  // show ticking elapsed vs. the title
+static const char *s_title = NULL;   // title override; NULL = default "Kimai"
 
 static void header_update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
@@ -44,7 +45,7 @@ static void header_update(Layer *layer, GContext *ctx) {
   if (tm->status == TIMER_RUNNING && s_show_elapsed) {
     data_timer_elapsed_str(left_buf, sizeof(left_buf));
   } else {
-    snprintf(left_buf, sizeof(left_buf), "Kimai");
+    snprintf(left_buf, sizeof(left_buf), "%s", s_title ? s_title : "Kimai");
   }
   graphics_draw_text(ctx, left_buf, f18, GRect(name_x, 4, time_left - name_x - 4, 20),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
@@ -73,6 +74,12 @@ Layer *header_bar_create(int width) {
 void header_bar_set_active(Layer *hb, bool show_elapsed) {
   s_active = hb;
   s_show_elapsed = show_elapsed;
+  s_title = NULL;
+  if (s_active) { layer_mark_dirty(s_active); }
+}
+
+void header_bar_set_title(const char *title) {
+  s_title = title;
   if (s_active) { layer_mark_dirty(s_active); }
 }
 

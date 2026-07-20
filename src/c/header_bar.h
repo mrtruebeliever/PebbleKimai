@@ -18,8 +18,15 @@ Layer *header_bar_create(int width);
 
 // Registers which header layer is currently visible. `show_elapsed` = true shows
 // the ticking elapsed time on the left while a timer runs (the activity list);
-// false always shows the app title (the hero, whose card already shows elapsed).
+// false always shows the title (the hero, whose card already shows elapsed).
+// Resets any header_bar_set_title() override back to the default app title.
 void header_bar_set_active(Layer *hb, bool show_elapsed);
+
+// Overrides the left-side title text (shown whenever show_elapsed is false, or
+// no timer is running) until the next header_bar_set_active() call. Used by
+// windows like the project/customer picker that want a title other than the
+// app name. NULL restores the default app title.
+void header_bar_set_title(const char *title);
 
 // Marks the active header dirty (clock/elapsed changed). Safe if none.
 void header_bar_refresh(void);

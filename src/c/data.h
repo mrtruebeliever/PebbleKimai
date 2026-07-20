@@ -27,10 +27,14 @@
 #define ERR_SERVER     4
 #define ERR_NO_PROJECT 5
 
-// One global Kimai activity shown on the watch.
+// One Kimai activity shown on the watch. `project_id` is the active project it
+// is bound to, or 0 for a global activity — set from the phone's per-project
+// filtered stream, so any nonzero value here always means "bound to whatever
+// project is currently active" (see activity_list.c's dimming of globals).
 typedef struct {
   int  id;
   char name[ACT_NAME_LEN];
+  int  project_id;
 } Activity;
 
 // One Kimai project, with its owning customer (streamed from the phone). The
