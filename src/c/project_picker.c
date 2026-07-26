@@ -66,7 +66,16 @@ static void rebuild_lists(void) {
 
 // Text for the single empty-state row.
 static const char *empty_text(void) {
-  if (data_project_load_state() == LOAD_LOADING) { return i18n(STR_LOADING); }
+  // Mirrors status_text() in activity_list.c. Without the error and
+  // unconfigured cases, a phone that cannot be reached reported itself as
+  // "No projects" -- stating as fact that the user's Kimai is empty, and
+  // sending them off to fix the wrong thing.
+  switch (data_project_load_state()) {
+    case LOAD_LOADING:      return i18n(STR_LOADING);
+    case LOAD_ERROR:        return i18n(STR_NO_CONNECTION);
+    case LOAD_UNCONFIGURED: return i18n(STR_SETUP);
+    default: break;
+  }
   return (s_mode == MODE_PROJECTS) ? i18n(STR_NO_PROJECTS) : i18n(STR_NO_CUSTOMERS);
 }
 

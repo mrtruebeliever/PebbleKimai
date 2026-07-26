@@ -11,7 +11,8 @@
 
 #define ROW_H         40
 #define ROW_RUNNING_H 58
-#define ROW_STATUS_H  44
+#define ROW_STATUS_H  54   // two Gothic-18 lines: several status strings
+                           // embed a newline and 44 clipped the second
 #define ROW_PROJECT_H 44
 #define ROW_RECT_MAX  40          // touch hit-test slots (rows 0..N)
 
@@ -126,7 +127,9 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
   bool selected = menu_layer_get_selected_index(s_menu).row == idx->row;
   bool dim = !running && a->project_id == 0 && any_project_bound();
 
-  graphics_context_set_text_color(ctx, dim ? GColorDarkGray : GColorBlack);
+  // Never dim the selected row: DarkGray on the KellyGreen highlight is a
+  // poor pair, and it lands on the row the user is about to act on.
+  graphics_context_set_text_color(ctx, (dim && !selected) ? GColorDarkGray : GColorBlack);
   graphics_draw_text(ctx, a->name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
                      GRect(10, running ? 2 : (b.size.h - 32) / 2, b.size.w - 16, 28),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
@@ -154,8 +157,11 @@ static void list_activate(int row) {
   int ai = row - act_offset();
 
   if (!list_ready() || data_activity_count() == 0) {
-    // The status row doubles as a retry button (except while already loading).
-    if (data_load_state() != LOAD_LOADING) { timer_refresh(); }
+    // The status row doubles as a retry button, including while loading: if the
+    // phone swallowed the first request, pressing the only row on screen should
+    // re-issue it rather than do nothing. The watchdog in data.c covers the
+    // case where the user does not press anything at all.
+    timer_refresh();
     return;
   }
 

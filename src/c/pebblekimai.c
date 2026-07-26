@@ -40,6 +40,7 @@ static void init(void) {
   config_load();            // language + persisted active project/customer
   header_bar_init();
 
+  data_set_stall_callback(on_data_changed);
   config_set_change_callback(on_data_changed);
   config_set_error_callback(on_error);
   app_message_register_inbox_received(config_inbox_received);

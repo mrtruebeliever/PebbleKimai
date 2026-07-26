@@ -63,6 +63,9 @@ typedef struct {
 // --- Load state --------------------------------------------------------------
 int  data_load_state(void);
 void data_set_load_state(int s);
+// Called when a load has sat in LOAD_LOADING too long and has been dropped to
+// LOAD_ERROR; the app registers its redraw here.
+void data_set_stall_callback(void (*cb)(void));
 
 // --- Activities --------------------------------------------------------------
 int       data_activity_count(void);

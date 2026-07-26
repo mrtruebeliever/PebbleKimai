@@ -40,10 +40,14 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *c) 
   }
   GRect b = layer_get_bounds(cell);
   graphics_context_set_text_color(ctx, GColorBlack);
+  // Two lines, wrapped. At Gothic 24 Bold one line cut off around 16 characters,
+  // so DE "Wechseln zu %s" lost the activity name -- on a confirmation whose
+  // whole job is to say what you are about to stop -- and the FR/ES "stop
+  // timer" labels clipped before any name was even substituted.
   graphics_draw_text(ctx, s_items[idx->row].label,
                      fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
-                     GRect(10, (b.size.h - 28) / 2, b.size.w - 16, 28),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
+                     GRect(10, 4, b.size.w - 16, 42),
+                     GTextOverflowModeWordWrap, GTextAlignmentLeft, NULL);
 }
 
 static void select_click(MenuLayer *ml, MenuIndex *idx, void *ctx) {
