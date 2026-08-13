@@ -14,3 +14,7 @@ typedef struct {
 // Pushes the menu. `items` is copied (up to a small maximum); labels must point
 // to storage that outlives the menu (i18n strings or static buffers are fine).
 void confirm_menu_show(const ConfirmItem *items, int count);
+
+// Raw touch, forwarded from the app-wide subscription while this window is on top.
+bool confirm_menu_is_top(void);
+void confirm_menu_handle_touch(const TouchEvent *event);

@@ -12,3 +12,7 @@ void project_picker_push_customers(void);  // opened from a long-press on the pr
 // Rebuilds the picker from the live project list if it is open (e.g. projects
 // arrived from the phone while it was showing "loading"). No-op when closed.
 void project_picker_reload(void);
+
+// Raw touch, forwarded from the app-wide subscription while this window is on top.
+bool project_picker_is_top(void);
+void project_picker_handle_touch(const TouchEvent *event);

@@ -12,8 +12,9 @@ the header bar; the Kimai server is always the source of truth.
   idle, the last activity with a one-press **Start again**. Down/Select jump into
   the activity list; long-press Select stops (or refreshes).
 - **Touchscreen** support on Pebble Time 2: tap a row to select and start/stop/
-  switch it, tap the hero card to open the list. The physical buttons keep
-  working everywhere (touch self-disables on non-touch watches).
+  switch it, tap the hero card to open the list, drag a list to scroll it (it
+  glides on after you let go) and swipe left-to-right to go back. The physical
+  buttons keep working everywhere (touch self-disables on non-touch watches).
 - **Active-project row** at the top of the list: tap it to pick the project new timesheets
   are booked on; long-press it to pick a **customer** (the project list then
   filters to that customer). Your latest choice is remembered on the watch.

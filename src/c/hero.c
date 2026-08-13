@@ -1,4 +1,5 @@
 #include "hero.h"
+#include "touch_nav.h"
 #include "activity_list.h"
 #include "data.h"
 #include "header_bar.h"
@@ -11,8 +12,6 @@
 // Local touch-gesture thresholds (pixels): the hero is a card, not a MenuLayer,
 // so the system touch-navigation bridge does not reach it — it stays on the raw
 // TouchService, as before 4.33.
-#define TOUCH_TAP_MAX   14   // total finger travel still counted as a tap
-#define TOUCH_SWIPE_MIN 40   // min horizontal travel for a right-swipe = back
 
 static Window   *s_window = NULL;
 static Layer    *s_body = NULL;
@@ -159,20 +158,19 @@ static void click_config(void *ctx) {
   window_long_click_subscribe(BUTTON_ID_UP, 0, up_long_click, NULL);
 }
 
-// Touch (Pebble Time 2): tap the card to open the activity list; swipe right to
-// go back (exits the app, since the hero is the root).
-static int16_t s_tx0, s_ty0;
+// Touch (Pebble Time 2): tap the card to open the activity list. Gesture
+// decoding lives in touch_nav.h, shared with the list windows, and the app-wide
+// subscription in pebblekimai.c forwards the events here.
 
-static void touch_handler(const TouchEvent *event, void *context) {
-  if (event->type == TouchEvent_Touchdown) {
-    s_tx0 = event->x; s_ty0 = event->y;
-  } else if (event->type == TouchEvent_Liftoff) {
-    int adx = abs(event->x - s_tx0), ady = abs(event->y - s_ty0);
-    if (adx >= TOUCH_SWIPE_MIN && adx > ady) {
-      if (event->x > s_tx0) { window_stack_pop(true); }   // swipe right = back (exit)
-    } else if (adx <= TOUCH_TAP_MAX && ady <= TOUCH_TAP_MAX) {
-      go_to_list();                                        // tap = open the list
-    }
+bool hero_is_top(void) {
+  return s_window && window_stack_get_top_window() == s_window;
+}
+
+void hero_handle_touch(const TouchEvent *event) {
+  switch (touch_nav_feed(NULL, event, NULL)) {
+    case TOUCH_NAV_TAP:  go_to_list(); break;
+    case TOUCH_NAV_BACK: window_stack_pop(true); break;   // leaves the app, as BACK does
+    default: break;
   }
 }
 
@@ -213,22 +211,19 @@ static void window_load(Window *window) {
   layer_add_child(root, s_header);
 
   window_set_click_config_provider(window, click_config);
+  window_set_touch_bridge_disabled(window, true);
 }
 
 static void window_appear(Window *window) {
   header_bar_set_active(s_header, false);   // the card shows elapsed; header keeps the title
   s_shown = true;
   ensure_tick();
-  if (touch_service_is_enabled()) {
-    touch_service_subscribe(touch_handler, NULL);
-  }
   if (s_body) { layer_mark_dirty(s_body); }
 }
 
 static void window_disappear(Window *window) {
   s_shown = false;
   if (s_tick) { app_timer_cancel(s_tick); s_tick = NULL; }
-  touch_service_unsubscribe();
 }
 
 static void window_unload(Window *window) {

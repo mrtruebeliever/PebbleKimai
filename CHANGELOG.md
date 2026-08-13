@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.4.0
+
+- **Touch navigation, done in the app.** The activity list, project picker and
+  confirm menu scroll with your finger (and keep gliding after you let go), open
+  the row you tap, and go back on a left-to-right swipe. The hero card keeps its
+  tap-to-open-the-list and swipe-right-to-leave gestures; it now shares the same
+  gesture decoding as the lists.
+- **The 2.3.0 switch to the watch's built-in touch navigation is reverted.** On
+  firmware 4.33.1 `app_touch_navigation_enable(true)` faults inside firmware on
+  the first touch and kills the app, whatever the app does. Touch now comes
+  straight from the raw touch stream (`src/c/touch_nav.c`). Reported as
+  [PebbleOS#1865](https://github.com/coredevices/PebbleOS/issues/1865).
+
 ## 2.3.0
 
 - **Touch now uses the watch's built-in navigation** (Pebble SDK 4.33) instead

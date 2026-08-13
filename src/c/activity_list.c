@@ -1,4 +1,5 @@
 #include "activity_list.h"
+#include "touch_nav.h"
 #include "data.h"
 #include "header_bar.h"
 #include "i18n.h"
@@ -202,6 +203,49 @@ static void ensure_tick(void) {
 
 // --- Window lifecycle ---------------------------------------------------------
 
+// --- Touch -------------------------------------------------------------------
+//
+// The system touch bridge (app_touch_navigation_enable) faults inside firmware
+// on 4.33.1, so touch is handled from the raw stream — see touch_nav.h.
+
+// Keeps the selection on a visible row after a drag or glide: SELECT would
+// otherwise act on a row that scrolled out of sight, and the next UP/DOWN would
+// yank the list back. The middle row is where button navigation puts it anyway.
+static void touch_settled(void) {
+  if (!s_menu) { return; }
+  GRect frame = layer_get_frame(menu_layer_get_layer(s_menu));
+  int row = touch_nav_row_at(s_menu, GPoint(frame.size.w / 2, frame.origin.y + frame.size.h / 2),
+                             get_num_rows(s_menu, 0, NULL), get_cell_height);
+  if (row >= 0) {
+    menu_layer_set_selected_index(s_menu, MenuIndex(0, (uint16_t)row), MenuRowAlignNone, false);
+    layer_mark_dirty(menu_layer_get_layer(s_menu));   // no scroll means no repaint otherwise
+  }
+}
+
+bool activity_list_is_top(void) {
+  return s_window && window_stack_get_top_window() == s_window;
+}
+
+void activity_list_handle_touch(const TouchEvent *event) {
+  if (!s_menu) { return; }
+  GPoint point;
+  switch (touch_nav_feed(menu_layer_get_scroll_layer(s_menu), event, &point)) {
+    case TOUCH_NAV_TAP: {
+      int row = touch_nav_row_at(s_menu, point, get_num_rows(s_menu, 0, NULL), get_cell_height);
+      if (row < 0) { return; }
+      MenuIndex index = MenuIndex(0, (uint16_t)row);
+      menu_layer_set_selected_index(s_menu, index, MenuRowAlignNone, false);
+      select_click(s_menu, &index, NULL);
+      break;
+    }
+    case TOUCH_NAV_BACK:
+      window_stack_pop(true);
+      break;
+    default:
+      break;
+  }
+}
+
 static void window_load(Window *window) {
   Layer *root = window_get_root_layer(window);
   GRect b = layer_get_bounds(root);
@@ -217,6 +261,7 @@ static void window_load(Window *window) {
   });
   menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
   menu_layer_set_click_config_onto_window(s_menu, window);
+  window_set_touch_bridge_disabled(window, true);
   layer_add_child(root, menu_layer_get_layer(s_menu));
 
   s_header = header_bar_create(b.size.w);
@@ -224,17 +269,20 @@ static void window_load(Window *window) {
 }
 
 static void window_appear(Window *window) {
+  touch_nav_set_settled_handler(touch_settled);
   header_bar_set_active(s_header, true);   // list header shows the ticking elapsed
   s_shown = true;
   ensure_tick();
 }
 
 static void window_disappear(Window *window) {
+  touch_nav_reset();
   s_shown = false;
   if (s_tick) { app_timer_cancel(s_tick); s_tick = NULL; }
 }
 
 static void window_unload(Window *window) {
+  touch_nav_reset();
   menu_layer_destroy(s_menu);
   s_menu = NULL;
   layer_destroy(s_header);
