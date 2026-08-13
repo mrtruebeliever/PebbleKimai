@@ -17,8 +17,10 @@ Kimai server always stays the source of truth.
 FEATURES
 • Hero start screen — running timer or last activity, front and center, with a
   one-press restart when idle.
-• Touchscreen on Pebble Time 2: tap a row to start/stop/switch, tap the hero to
-  open the list. Physical buttons keep working everywhere.
+• Touchscreen on Pebble Time 2, using the watch's own touch navigation: tap a
+  row to start/stop/switch, tap the hero to open the list, swipe right to go
+  back — the same feel as every other menu on the watch. Physical buttons
+  keep working everywhere.
 • Active-project row on the watch — tap to choose the project time is booked on;
   long-press to choose a customer, and the project list filters to that customer.
   Your latest choice is remembered on the watch.

@@ -1,27 +1,22 @@
 #include "activity_list.h"
-#include "config.h"
 #include "data.h"
 #include "header_bar.h"
 #include "i18n.h"
 #include "project_picker.h"
 #include "theme.h"
 #include "timer_actions.h"
-#include "touch_nav.h"
-#include <stdlib.h>
 
 #define ROW_H         40
 #define ROW_RUNNING_H 58
 #define ROW_STATUS_H  54   // two Gothic-18 lines: several status strings
                            // embed a newline and 44 clipped the second
 #define ROW_PROJECT_H 44
-#define ROW_RECT_MAX  40          // touch hit-test slots (rows 0..N)
 
 static Window    *s_window = NULL;
 static MenuLayer *s_menu = NULL;
 static Layer     *s_header = NULL;
 static AppTimer  *s_tick = NULL;              // 1 s repaint while a timer runs
 static bool       s_shown = false;            // the list is the visible window
-static GRect      s_row_rect[ROW_RECT_MAX];   // last on-screen rect per row (touch)
 
 // The list is drawable once loaded, or while a (re)load streams rows in.
 static bool list_ready(void) {
@@ -100,11 +95,6 @@ static void draw_project_row(GContext *ctx, const Layer *cell) {
 
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *context) {
   GRect b = layer_get_bounds(cell);
-
-  // Remember this row's on-screen rectangle so a touch can hit-test it.
-  if (idx->row < ROW_RECT_MAX) {
-    s_row_rect[idx->row] = layer_convert_rect_to_screen((Layer *)cell, b);
-  }
 
   if (has_project_row() && idx->row == 0) {
     draw_project_row(ctx, cell);
@@ -192,73 +182,6 @@ static void select_long_click(MenuLayer *menu, MenuIndex *idx, void *context) {
   timer_open_long_press_menu();
 }
 
-// --- Touch (Pebble Time 2) ----------------------------------------------------
-// Tap a row to select+activate it; drag up/down to scroll; swipe right to go
-// back. The physical buttons keep working as the always-available fallback.
-
-static int16_t s_tx0, s_ty0;     // touchdown point
-static int16_t s_last_y;         // last y a scroll step was taken at
-static bool    s_scrolled;       // this gesture already scrolled (=> not a tap)
-
-static void tap_row(int16_t x, int16_t y) {
-  GPoint p = GPoint(x, y);
-  // Ignore stored rects that fall outside the menu's current viewport: rows that
-  // scrolled off keep a stale rect, and only the visible rows are redrawn.
-  Layer *ml = menu_layer_get_layer(s_menu);
-  GRect vis = layer_convert_rect_to_screen(ml, layer_get_bounds(ml));
-  int vtop = vis.origin.y, vbot = vis.origin.y + vis.size.h;
-
-  int n = get_num_rows(s_menu, 0, NULL);
-  for (int r = 0; r < n && r < ROW_RECT_MAX; r++) {
-    GRect rr = s_row_rect[r];
-    int cy = rr.origin.y + rr.size.h / 2;
-    if (cy < vtop || cy >= vbot) { continue; }
-    if (grect_contains_point(&rr, &p)) {
-      menu_layer_set_selected_index(s_menu, (MenuIndex){ .section = 0, .row = r },
-                                    MenuRowAlignNone, false);
-      list_activate(r);
-      return;
-    }
-  }
-}
-
-static void touch_handler(const TouchEvent *event, void *context) {
-  if (!s_menu || !config_touch_enabled()) return;
-
-  switch (event->type) {
-    case TouchEvent_Touchdown:
-      s_tx0 = event->x; s_ty0 = event->y; s_last_y = event->y; s_scrolled = false;
-      break;
-
-    case TouchEvent_PositionUpdate: {
-      // Scroll only while the drag stays mostly vertical (a horizontal drag is a
-      // back-swipe, handled on liftoff). One selection step per row of travel.
-      if (abs(event->x - s_tx0) > abs(event->y - s_ty0)) break;
-      int dy = event->y - s_last_y;
-      while (dy >= TOUCH_SCROLL_STEP) {          // finger down -> previous row
-        menu_layer_set_selected_next(s_menu, true, MenuRowAlignCenter, false);
-        s_last_y += TOUCH_SCROLL_STEP; dy -= TOUCH_SCROLL_STEP; s_scrolled = true;
-      }
-      while (dy <= -TOUCH_SCROLL_STEP) {         // finger up -> next row
-        menu_layer_set_selected_next(s_menu, false, MenuRowAlignCenter, false);
-        s_last_y -= TOUCH_SCROLL_STEP; dy += TOUCH_SCROLL_STEP; s_scrolled = true;
-      }
-      break;
-    }
-
-    case TouchEvent_Liftoff: {
-      if (s_scrolled) break;                     // was a scroll drag: nothing to do
-      int adx = abs(event->x - s_tx0), ady = abs(event->y - s_ty0);
-      if (adx >= TOUCH_SWIPE_MIN && adx > ady) {
-        if (event->x > s_tx0) { window_stack_pop(true); }   // swipe right = back
-      } else if (adx <= TOUCH_TAP_MAX && ady <= TOUCH_TAP_MAX) {
-        tap_row(event->x, event->y);             // tap = select + activate
-      }
-      break;
-    }
-  }
-}
-
 // --- Second tick (elapsed time repaint) --------------------------------------
 // Runs only while a timer is running and the list is on screen, so an idle open
 // list does not wake the CPU once a second for nothing.
@@ -304,15 +227,11 @@ static void window_appear(Window *window) {
   header_bar_set_active(s_header, true);   // list header shows the ticking elapsed
   s_shown = true;
   ensure_tick();
-  if (touch_service_is_enabled() && config_touch_enabled()) {
-    touch_service_subscribe(touch_handler, NULL);
-  }
 }
 
 static void window_disappear(Window *window) {
   s_shown = false;
   if (s_tick) { app_timer_cancel(s_tick); s_tick = NULL; }
-  touch_service_unsubscribe();
 }
 
 static void window_unload(Window *window) {

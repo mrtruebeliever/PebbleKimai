@@ -1,14 +1,18 @@
 #include "hero.h"
 #include "activity_list.h"
-#include "config.h"
 #include "data.h"
 #include "header_bar.h"
 #include "i18n.h"
 #include "project_picker.h"
 #include "theme.h"
 #include "timer_actions.h"
-#include "touch_nav.h"
 #include <stdlib.h>
+
+// Local touch-gesture thresholds (pixels): the hero is a card, not a MenuLayer,
+// so the system touch-navigation bridge does not reach it — it stays on the raw
+// TouchService, as before 4.33.
+#define TOUCH_TAP_MAX   14   // total finger travel still counted as a tap
+#define TOUCH_SWIPE_MIN 40   // min horizontal travel for a right-swipe = back
 
 static Window   *s_window = NULL;
 static Layer    *s_body = NULL;
@@ -160,7 +164,6 @@ static void click_config(void *ctx) {
 static int16_t s_tx0, s_ty0;
 
 static void touch_handler(const TouchEvent *event, void *context) {
-  if (!config_touch_enabled()) return;
   if (event->type == TouchEvent_Touchdown) {
     s_tx0 = event->x; s_ty0 = event->y;
   } else if (event->type == TouchEvent_Liftoff) {
@@ -216,7 +219,7 @@ static void window_appear(Window *window) {
   header_bar_set_active(s_header, false);   // the card shows elapsed; header keeps the title
   s_shown = true;
   ensure_tick();
-  if (touch_service_is_enabled() && config_touch_enabled()) {
+  if (touch_service_is_enabled()) {
     touch_service_subscribe(touch_handler, NULL);
   }
   if (s_body) { layer_mark_dirty(s_body); }

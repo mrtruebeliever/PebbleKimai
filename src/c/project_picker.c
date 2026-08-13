@@ -5,8 +5,6 @@
 #include "header_bar.h"
 #include "i18n.h"
 #include "theme.h"
-#include "touch_nav.h"
-#include <stdlib.h>
 
 typedef enum { MODE_PROJECTS, MODE_CUSTOMERS } PickMode;
 
@@ -26,10 +24,6 @@ static int  s_proj_n = 0;
 static int  s_cust_id[MAX_PROJECTS];                 // distinct customer ids
 static char s_cust_name[MAX_PROJECTS][CUST_NAME_LEN];
 static int  s_cust_n = 0;
-
-static GRect   s_row_rect[MAX_PROJECTS];             // on-screen rect per row (touch)
-static int16_t s_tx0, s_ty0, s_last_y;
-static bool    s_scrolled;
 
 // Show a customer sublabel / offer the customer picker only when the instance
 // actually has more than one customer.
@@ -128,9 +122,6 @@ static void draw_text_row(GContext *ctx, const Layer *cell, const char *title, c
 }
 
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *ci, void *c) {
-  if (ci->row < MAX_PROJECTS) {
-    s_row_rect[ci->row] = layer_convert_rect_to_screen((Layer *)cell, layer_get_bounds(cell));
-  }
   if (s_mode == MODE_PROJECTS) {
     if (s_proj_n == 0) { draw_text_row(ctx, cell, empty_text(), ""); return; }
     Project *p = data_project(s_proj_idx[ci->row]);
@@ -143,59 +134,6 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *ci, void *c) {
 
 static void select_click(MenuLayer *ml, MenuIndex *ci, void *ctx) {
   activate(ci->row);
-}
-
-// --- Touch -------------------------------------------------------------------
-
-static void tap(int16_t x, int16_t y) {
-  GPoint p = GPoint(x, y);
-  Layer *ml = menu_layer_get_layer(s_menu);
-  GRect vis = layer_convert_rect_to_screen(ml, layer_get_bounds(ml));
-  int vtop = vis.origin.y, vbot = vis.origin.y + vis.size.h;
-  int n = get_num_rows(s_menu, 0, NULL);
-  for (int r = 0; r < n && r < MAX_PROJECTS; r++) {
-    GRect rr = s_row_rect[r];
-    int cy = rr.origin.y + rr.size.h / 2;
-    if (cy < vtop || cy >= vbot) { continue; }
-    if (grect_contains_point(&rr, &p)) {
-      menu_layer_set_selected_index(s_menu, (MenuIndex){ .section = 0, .row = r },
-                                    MenuRowAlignNone, false);
-      activate(r);
-      return;
-    }
-  }
-}
-
-static void touch_handler(const TouchEvent *event, void *context) {
-  if (!s_menu || !config_touch_enabled()) return;
-  switch (event->type) {
-    case TouchEvent_Touchdown:
-      s_tx0 = event->x; s_ty0 = event->y; s_last_y = event->y; s_scrolled = false;
-      break;
-    case TouchEvent_PositionUpdate: {
-      if (abs(event->x - s_tx0) > abs(event->y - s_ty0)) break;
-      int dy = event->y - s_last_y;
-      while (dy >= TOUCH_SCROLL_STEP) {
-        menu_layer_set_selected_next(s_menu, true, MenuRowAlignCenter, false);
-        s_last_y += TOUCH_SCROLL_STEP; dy -= TOUCH_SCROLL_STEP; s_scrolled = true;
-      }
-      while (dy <= -TOUCH_SCROLL_STEP) {
-        menu_layer_set_selected_next(s_menu, false, MenuRowAlignCenter, false);
-        s_last_y -= TOUCH_SCROLL_STEP; dy += TOUCH_SCROLL_STEP; s_scrolled = true;
-      }
-      break;
-    }
-    case TouchEvent_Liftoff: {
-      if (s_scrolled) break;
-      int adx = abs(event->x - s_tx0), ady = abs(event->y - s_ty0);
-      if (adx >= TOUCH_SWIPE_MIN && adx > ady) {
-        if (event->x > s_tx0) { window_stack_pop(true); }   // swipe right = back
-      } else if (adx <= TOUCH_TAP_MAX && ady <= TOUCH_TAP_MAX) {
-        tap(event->x, event->y);
-      }
-      break;
-    }
-  }
 }
 
 // --- Window ------------------------------------------------------------------
@@ -224,13 +162,6 @@ static void window_load(Window *window) {
 static void window_appear(Window *window) {
   header_bar_set_active(s_header, false);
   refresh_title();
-  if (touch_service_is_enabled() && config_touch_enabled()) {
-    touch_service_subscribe(touch_handler, NULL);
-  }
-}
-
-static void window_disappear(Window *window) {
-  touch_service_unsubscribe();
 }
 
 static void window_unload(Window *window) {
@@ -248,7 +179,6 @@ static void push(PickMode mode) {
   window_set_window_handlers(s_window, (WindowHandlers){
     .load = window_load,
     .appear = window_appear,
-    .disappear = window_disappear,
     .unload = window_unload,
   });
   window_stack_push(s_window, true);

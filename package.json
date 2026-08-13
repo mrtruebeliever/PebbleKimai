@@ -1,7 +1,7 @@
 {
   "name": "pebblekimai",
   "author": "mrtruebeliever",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "license": "MIT",
   "keywords": ["pebble-app"],
   "private": true,
@@ -32,7 +32,6 @@
       "DEFAULT_PROJECT",
       "DEFAULT_CUSTOMER",
       "LANGUAGE",
-      "TOUCH_ENABLED",
       "LOAD_STATE",
       "ACT_COUNT",
       "ACT_INDEX",

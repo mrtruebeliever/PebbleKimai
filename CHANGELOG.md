@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.0
+
+- **Touch now uses the watch's built-in navigation** (Pebble SDK 4.33) instead
+  of PebbleKimai's own tap/scroll/swipe handling — tapping, scrolling and
+  swiping right to go back on the activity list and the project/customer
+  pickers now feel exactly like every other menu on the watch. The separate
+  "Touchscreen" toggle in settings is gone; touch follows the watch's own
+  system-wide touch setting.
+
 ## 2.2.0
 
 - **Activities bound to the active project now surface at the top of the
