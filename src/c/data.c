@@ -9,6 +9,10 @@ static int      s_project_load_state = LOAD_LOADING;
 static Project  s_projects[MAX_PROJECTS];
 static int      s_project_count = 0;
 
+static int      s_recent_load_state = LOAD_LOADING;
+static Recent   s_recents[MAX_RECENTS];
+static int      s_recent_count = 0;
+
 // Active context (loaded from persist by config_load, kept in sync on picks).
 static int  s_ap_id = 0;
 static char s_ap_name[PROJ_NAME_LEN] = "";
@@ -108,6 +112,33 @@ int data_customer_count(void) {
     if (!seen) n++;
   }
   return n;
+}
+
+// --- Recent activities -------------------------------------------------------
+
+int  data_recent_load_state(void)      { return s_recent_load_state; }
+void data_set_recent_load_state(int s) { s_recent_load_state = s; }
+int  data_recent_count(void)           { return s_recent_count; }
+
+void data_set_recent_count(int n) {
+  if (n < 0) n = 0;
+  if (n > MAX_RECENTS) n = MAX_RECENTS;
+  s_recent_count = n;
+}
+
+void data_clear_recents(void) {
+  s_recent_count = 0;
+  for (int i = 0; i < MAX_RECENTS; i++) {
+    s_recents[i].id = 0;
+    s_recents[i].name[0] = '\0';
+    s_recents[i].project_id = 0;
+    s_recents[i].project[0] = '\0';
+  }
+}
+
+Recent *data_recent(int i) {
+  if (i < 0 || i >= MAX_RECENTS) return NULL;
+  return &s_recents[i];
 }
 
 // --- Active context ----------------------------------------------------------

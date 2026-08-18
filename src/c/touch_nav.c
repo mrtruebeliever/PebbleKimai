@@ -1,5 +1,10 @@
 #include "touch_nav.h"
 
+static bool s_bridge_active = false;
+
+bool touch_nav_bridge_active(void)            { return s_bridge_active; }
+void touch_nav_set_bridge_active(bool active) { s_bridge_active = active; }
+
 #define TAP_SLOP        12   // px of drift still counted as a tap
 #define BACK_SWIPE_MIN  28   // px of rightward travel that means "back"
 #define GLIDE_MS        33   // ~30 fps while coasting

@@ -1,7 +1,7 @@
 {
   "name": "pebblekimai",
   "author": "mrtruebeliever",
-  "version": "2.4.0",
+  "version": "2.8.1",
   "license": "MIT",
   "keywords": ["pebble-app"],
   "private": true,
@@ -56,7 +56,15 @@
       "START_ACTIVITY",
       "STOP_ACTIVITY",
       "SWITCH_ACTIVITY",
-      "ACT_PROJECT_ID"
+      "ACT_PROJECT_ID",
+      "TIMER_PROJECT_ID",
+      "REQUEST_RECENTS",
+      "RECENT_COUNT",
+      "RECENT_INDEX",
+      "RECENT_ID",
+      "RECENT_NAME",
+      "RECENT_PROJECT_ID",
+      "RECENT_PROJECT_NAME"
     ],
     "resources": {
       "media": [
@@ -72,8 +80,18 @@
           "file": "images/header_icon.png"
         },
         {
+          "type": "png",
+          "name": "IMG_STATUS_RUNNING",
+          "file": "images/status_running.png"
+        },
+        {
+          "type": "png",
+          "name": "IMG_STATUS_LAST",
+          "file": "images/status_last.png"
+        },
+        {
           "type": "font",
-          "name": "FONT_RAJDHANI_28",
+          "name": "FONT_RAJDHANI_24",
           "file": "fonts/Rajdhani-Bold.ttf",
           "characterRegex": "[ -~À-ÿ]",
           "compatibility": "2.7"

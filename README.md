@@ -7,14 +7,24 @@ the header bar; the Kimai server is always the source of truth.
 
 ## Features
 
-- **Hero start screen**: the landing screen shows the running activity as a card
-  with its name, a big ticking elapsed time and the project/customer — or, when
-  idle, the last activity with a one-press **Start again**. Down/Select jump into
-  the activity list; long-press Select stops (or refreshes).
-- **Touchscreen** support on Pebble Time 2: tap a row to select and start/stop/
-  switch it, tap the hero card to open the list, drag a list to scroll it (it
-  glides on after you let go) and swipe left-to-right to go back. The physical
-  buttons keep working everywhere (touch self-disables on non-touch watches).
+- **Hero start screen**: the project in bold above the activity name (over two lines when it is long), a big ticking elapsed time
+  and the customer in bold at the bottom, with a status icon in the bottom-right
+  corner — or, when idle, the last activity with a one-press **Start again**.
+  Tapping the elapsed time stops the timer (after confirming). The project shown while a timer runs is the one
+  that timesheet is booked on; picking another project mid-run adds a **Next:**
+  line, since it only applies to the next entry. Down/Select jump into the
+  activity list; long-press Select stops (or refreshes).
+- **Recent activities**: long-press Down (or tap the status icon) for the last
+  five activities that ran, across every project, each with its own project.
+  Picking one books on that project and selects it on the watch.
+- **Touchscreen** on Pebble Time 2: the lists, pickers and confirmations use the
+  watch's own touch navigation, so scrolling, tapping a row and swiping right to
+  go back feel like every other menu. The start screen is a card rather than a
+  menu, so it maps taps to what they point at: status icon = recent activities,
+  project line = project picker, elapsed time = stop (with confirmation), call
+  to action = start again, anywhere else = the activity list. The physical
+  buttons keep working everywhere; on firmware older than 4.33.2 the app falls
+  back to its own touch handling, since the system bridge crashes there.
 - **Active-project row** at the top of the list: tap it to pick the project new timesheets
   are booked on; long-press it to pick a **customer** (the project list then
   filters to that customer). Your latest choice is remembered on the watch.

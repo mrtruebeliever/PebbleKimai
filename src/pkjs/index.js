@@ -111,10 +111,13 @@ function sendTimer(active) {
   var msg = {};
   if (active) {
     var act = active.activity || {};
+    // Kimai returns activity/project either as an object or as a bare id.
+    var prj = active.project;
     msg[keys.TIMER_STATUS] = TIMER_RUNNING;
     msg[keys.TIMER_TS_ID] = active.id || 0;
     msg[keys.TIMER_ACT_ID] = (typeof act === 'object' ? act.id : act) || 0;
     msg[keys.TIMER_ACT_NAME] = String((typeof act === 'object' && act.name) || '').substring(0, 31);
+    msg[keys.TIMER_PROJECT_ID] = (prj && typeof prj === 'object' ? prj.id : prj) || 0;
     msg[keys.TIMER_BEGIN] = Math.floor(new Date(active.begin).getTime() / 1000) || 0;
   } else {
     msg[keys.TIMER_STATUS] = TIMER_IDLE;
@@ -168,6 +171,29 @@ function streamProjects(projects) {
   }, function () { console.log('proj head send failed'); });
 }
 
+// Streams the recent-activity shortcut list (activity + the project it ran on).
+function streamRecents(list) {
+  var count = Math.min(list.length, MAX_RECENTS);
+  var head = {};
+  head[keys.RECENT_COUNT] = count;
+  Pebble.sendAppMessage(head, function () {
+    var i = 0;
+    function next() {
+      if (i >= count) return;
+      var r = list[i];
+      var msg = {};
+      msg[keys.RECENT_INDEX] = i;
+      msg[keys.RECENT_ID] = r.id;
+      msg[keys.RECENT_NAME] = String(r.name || '').substring(0, 31);
+      msg[keys.RECENT_PROJECT_ID] = r.projectId || 0;
+      msg[keys.RECENT_PROJECT_NAME] = String(r.project || '').substring(0, 31);
+      Pebble.sendAppMessage(msg, function () { i++; next(); },
+        function () { console.log('recent ' + i + ' send failed'); i++; next(); });
+    }
+    next();
+  }, function () { console.log('recent head send failed'); });
+}
+
 // Normalizes a Kimai project record to the fields the watch/settings need.
 function normProject(p) {
   return { id: p.id, name: String(p.name), customerId: p.customer || 0,
@@ -207,6 +233,14 @@ var DURATION_MAX_PAGES = 3;     // safety cap: up to 1500 recent entries
 var s_durations = {};   // activity id -> total tracked seconds in the window
 var s_durationsAt = 0;  // ms timestamp of the last successful fetch
 
+// The last distinct activity+project pairs that ran, newest first. Derived from
+// the same fetch as the durations: the records come back ordered begin DESC, so
+// the first time a pair appears is its most recent run. The pair (not just the
+// activity) is the unit, because starting a recent entry books it on its own
+// project — the same activity under two projects is two different shortcuts.
+var MAX_RECENTS = 5;
+var s_recentPairs = [];
+
 // Fetches every timesheet since the window start, paginating while a full
 // page comes back (bounded by DURATION_MAX_PAGES).
 function fetchRecentTimesheets(cb) {
@@ -232,17 +266,29 @@ function fetchRecentTimesheets(cb) {
 
 // Refreshes s_durations if the cache is stale, then calls cb(). Failures leave
 // the previous (possibly empty) cache in place rather than blocking the list.
-function loadDurations(cb) {
-  if (Date.now() - s_durationsAt < DURATION_TTL_MS) { cb(); return; }
+function loadDurations(cb, maxAgeMs) {
+  var ttl = (typeof maxAgeMs === 'number') ? maxAgeMs : DURATION_TTL_MS;
+  if (Date.now() - s_durationsAt < ttl) { cb(); return; }
   fetchRecentTimesheets(function (records) {
     var sums = {};
+    var seen = {};
+    var pairs = [];
     records.forEach(function (r) {
       var actId = (typeof r.activity === 'object') ? r.activity.id : r.activity;
+      var pid = (r.project && typeof r.project === 'object') ? r.project.id : r.project;
+      if (actId == null) { return; }
       var dur = r.duration;
-      if (actId == null || typeof dur !== 'number' || dur <= 0) { return; }
-      sums[actId] = (sums[actId] || 0) + dur;
+      if (typeof dur === 'number' && dur > 0) {
+        sums[actId] = (sums[actId] || 0) + dur;
+      }
+      // Recency, including the entry that is still running (no duration yet).
+      if (pid != null && pairs.length < MAX_RECENTS) {
+        var key = actId + ':' + pid;
+        if (!seen[key]) { seen[key] = true; pairs.push({ actId: actId, projectId: pid }); }
+      }
     });
     s_durations = sums;
+    s_recentPairs = pairs;
     s_durationsAt = Date.now();
     cb();
   });
@@ -277,6 +323,39 @@ function loadActivities(projectId) {
       streamActivities(bound.concat(globals));
     });
   });
+}
+
+// Builds the recent list: the cached activity+project pairs, given their names.
+// Timesheet records carry bare ids, so the names come from /api/activities and
+// from the cached project list. A short cache age is used here because a
+// shortcut list that misses what you just did is worse than one extra request.
+var RECENTS_MAX_AGE_MS = 60 * 1000;
+
+function loadRecents() {
+  if (!configured()) { return; }
+  loadDurations(function () {
+    request('GET', '/api/activities?visible=1', null, function (ok, status, data) {
+      var names = {};
+      if (ok && Array.isArray(data)) {
+        data.forEach(function (a) { names[a.id] = a.name; });
+      }
+      var projects = getAllProjects();
+      function projectName(id) {
+        for (var i = 0; i < projects.length; i++) {
+          if (projects[i].id === id) { return projects[i].name; }
+        }
+        return '';
+      }
+      var list = [];
+      s_recentPairs.forEach(function (pair) {
+        var name = names[pair.actId];
+        if (!name) { return; }   // deleted or hidden activity: not offerable
+        list.push({ id: pair.actId, name: name, projectId: pair.projectId,
+                    project: projectName(pair.projectId) });
+      });
+      streamRecents(list);
+    });
+  }, RECENTS_MAX_AGE_MS);
 }
 
 // Fetches the active timer and sends the authoritative state to the watch.
@@ -395,6 +474,8 @@ Pebble.addEventListener('appmessage', function (e) {
   var projectId = d.PROJECT_ID;
   if (d.REQUEST_PROJECTS !== undefined) {
     loadProjects();
+  } else if (d.REQUEST_RECENTS !== undefined) {
+    loadRecents();
   } else if (d.REQUEST_ACTIVITIES !== undefined) {
     loadActivities(projectId);
     loadTimer();

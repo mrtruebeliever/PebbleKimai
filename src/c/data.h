@@ -7,6 +7,7 @@
 #define MAX_PROJECTS   16
 #define PROJ_NAME_LEN  32
 #define CUST_NAME_LEN  32
+#define MAX_RECENTS    5
 
 // Load state of the activity list.
 #define LOAD_LOADING       0
@@ -47,6 +48,18 @@ typedef struct {
   char customer[CUST_NAME_LEN];
 } Project;
 
+// One entry of the "recent activities" shortcut: the last distinct activities
+// that actually ran, newest first, across every project. Each row carries its
+// own project, because starting one books on that project — not on whatever is
+// selected on the watch, which would be rejected for a project-bound activity.
+// The customer is looked up from the project list rather than streamed.
+typedef struct {
+  int  id;
+  char name[ACT_NAME_LEN];
+  int  project_id;
+  char project[PROJ_NAME_LEN];
+} Recent;
+
 // The (single) running-timer state. The server is the source of truth: `begin`
 // is the server-reported start as epoch seconds, so elapsed time is always
 // recomputed from it and local clock drift never accumulates. `pending` marks
@@ -56,6 +69,7 @@ typedef struct {
   int    ts_id;                  // running timesheet id on the server (0 = unknown)
   int    act_id;                 // running activity id
   char   act_name[ACT_NAME_LEN];
+  int    proj_id;                // project the running timesheet is booked on (0 = unknown)
   time_t begin;                  // epoch seconds
   bool   pending;
 } TimerState;
@@ -85,6 +99,16 @@ Project  *data_project(int i);             // by index, NULL if out of range
 Project  *data_project_by_id(int id);      // NULL if not found
 // Number of distinct customers across the loaded projects.
 int       data_customer_count(void);
+
+// --- Recent activities -------------------------------------------------------
+// Own load state: the shortcut list can be loading (or fail) without disturbing
+// the activity list behind it.
+int     data_recent_load_state(void);
+void    data_set_recent_load_state(int s);
+int     data_recent_count(void);
+void    data_set_recent_count(int n);      // clamps to MAX_RECENTS
+void    data_clear_recents(void);
+Recent *data_recent(int i);                // by index, NULL if out of range
 
 // --- Active context (persisted; see config.c) --------------------------------
 // The project time is booked on, and the customer filter for the project picker.

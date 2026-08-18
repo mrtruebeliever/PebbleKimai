@@ -103,23 +103,29 @@ static uint16_t get_num_rows(MenuLayer *ml, uint16_t section, void *ctx) {
   return n > 0 ? n : 1;                              // 1 = empty-state row
 }
 
+// A row without a customer line above it needs a lot less height.
 static int16_t get_cell_height(MenuLayer *ml, MenuIndex *ci, void *ctx) {
-  return 44;
+  return (s_mode == MODE_PROJECTS && multi_customer()) ? 40 : 32;
 }
 
+// Same shape as the recent list: the context line on top in bold, the row's own
+// subject underneath at full size. Here the context is the customer, shown only
+// when the instance has more than one.
 static void draw_text_row(GContext *ctx, const Layer *cell, const char *title, const char *sub) {
   GRect b = layer_get_bounds(cell);
   bool hl = menu_cell_layer_is_highlighted(cell);
-  graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, title, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
-                     GRect(8, (sub && sub[0]) ? 0 : 6, b.size.w - 12, 28),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-  if (sub && sub[0]) {
-    graphics_context_set_text_color(ctx, hl ? GColorBlack : GColorDarkGray);
-    graphics_draw_text(ctx, sub, fonts_get_system_font(FONT_KEY_GOTHIC_14),
-                       GRect(8, 26, b.size.w - 12, 16),
+  bool has_sub = sub && sub[0];
+  if (has_sub) {
+    graphics_context_set_text_color(ctx, hl ? GColorBlack
+                                            : PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack));
+    graphics_draw_text(ctx, sub, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+                       GRect(8, -1, b.size.w - 12, 20),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
+  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_draw_text(ctx, title, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+                     GRect(8, has_sub ? 17 : 5, b.size.w - 12, 22),
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *ci, void *c) {
@@ -197,7 +203,8 @@ static void window_load(Window *window) {
   menu_layer_set_normal_colors(s_menu, GColorWhite, GColorBlack);
   menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
   menu_layer_set_click_config_onto_window(s_menu, window);
-  window_set_touch_bridge_disabled(window, true);
+  // Let the system drive this menu when the bridge is available.
+  window_set_touch_bridge_disabled(window, !touch_nav_bridge_active());
   layer_add_child(root, menu_layer_get_layer(s_menu));
 
   s_header = header_bar_create(b.size.w);

@@ -39,6 +39,9 @@ typedef enum {
   STR_HERO_READY,       // "Ready"          (hero status label, nothing run yet)
   STR_START_AGAIN,      // "Start again"    (hero idle CTA)
   STR_CHOOSE_ACTIVITY,  // "Choose activity"(hero idle CTA, no last activity)
+  STR_HERO_NEXT,        // "Next"           (hero: project the next entry books on)
+  STR_RECENT,           // "Recent"         (recent-activity shortcut, title bar)
+  STR_NO_RECENTS,       // "Nothing yet"    (recent list, empty)
   STR_COUNT,
 } StrId;
 

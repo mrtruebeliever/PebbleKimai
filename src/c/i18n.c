@@ -27,6 +27,9 @@ static const char *S[LANG_COUNT][STR_COUNT] = {
     [STR_HERO_READY]      = "Ready",
     [STR_START_AGAIN]     = "Start again",
     [STR_CHOOSE_ACTIVITY] = "Choose activity",
+    [STR_HERO_NEXT]       = "Next",
+    [STR_RECENT]          = "Recent",
+    [STR_NO_RECENTS]      = "Nothing yet",
   },
   [LANG_NL] = {
     [STR_LOADING]         = "Laden...",
@@ -51,6 +54,9 @@ static const char *S[LANG_COUNT][STR_COUNT] = {
     [STR_HERO_READY]      = "Klaar",
     [STR_START_AGAIN]     = "Opnieuw starten",
     [STR_CHOOSE_ACTIVITY] = "Kies activiteit",
+    [STR_HERO_NEXT]       = "Volgende",
+    [STR_RECENT]          = "Recent",
+    [STR_NO_RECENTS]      = "Nog niets",
   },
   [LANG_FR] = {
     [STR_LOADING]         = "Chargement...",
@@ -75,6 +81,9 @@ static const char *S[LANG_COUNT][STR_COUNT] = {
     [STR_HERO_READY]      = "Pr\xC3\xAAt",
     [STR_START_AGAIN]     = "Red\xC3\xA9marrer",
     [STR_CHOOSE_ACTIVITY] = "Choisir activit\xC3\xA9",
+    [STR_HERO_NEXT]       = "Suivant",
+    [STR_RECENT]          = "R\xC3\xA9" "cent",
+    [STR_NO_RECENTS]      = "Rien encore",
   },
   [LANG_DE] = {
     [STR_LOADING]         = "Laden...",
@@ -99,6 +108,9 @@ static const char *S[LANG_COUNT][STR_COUNT] = {
     [STR_HERO_READY]      = "Bereit",
     [STR_START_AGAIN]     = "Erneut starten",
     [STR_CHOOSE_ACTIVITY] = "Aktivit\xC3\xA4t w\xC3\xA4hlen",
+    [STR_HERO_NEXT]       = "N\xC3\xA4" "chstes",
+    [STR_RECENT]          = "Zuletzt",
+    [STR_NO_RECENTS]      = "Noch nichts",
   },
   [LANG_ES] = {
     [STR_LOADING]         = "Cargando...",
@@ -123,6 +135,9 @@ static const char *S[LANG_COUNT][STR_COUNT] = {
     [STR_HERO_READY]      = "Listo",
     [STR_START_AGAIN]     = "Reiniciar",
     [STR_CHOOSE_ACTIVITY] = "Elegir actividad",
+    [STR_HERO_NEXT]       = "Siguiente",
+    [STR_RECENT]          = "Reciente",
+    [STR_NO_RECENTS]      = "Nada a\xC3\xBA" "n",
   },
 };
 

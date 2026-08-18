@@ -167,6 +167,32 @@ static void reconcile_active_project(void) {
   if (changed) { config_request_activities(); }
 }
 
+// --- Incoming: recent-activity stream ----------------------------------------
+
+static void apply_recent(DictionaryIterator *iter) {
+  Tuple *t_idx = dict_find(iter, MESSAGE_KEY_RECENT_INDEX);
+  if (!t_idx) return;
+  int idx = tuple_int(t_idx);
+  Recent *r = data_recent(idx);
+  if (!r) return;
+
+  if (idx >= data_recent_count()) {
+    data_set_recent_count(idx + 1);  // reveal rows progressively
+  }
+
+  Tuple *t;
+  if ((t = dict_find(iter, MESSAGE_KEY_RECENT_ID)))         r->id = tuple_int(t);
+  if ((t = dict_find(iter, MESSAGE_KEY_RECENT_PROJECT_ID))) r->project_id = tuple_int(t);
+  if ((t = dict_find(iter, MESSAGE_KEY_RECENT_NAME))) {
+    strncpy(r->name, t->value->cstring, ACT_NAME_LEN - 1);
+    r->name[ACT_NAME_LEN - 1] = '\0';
+  }
+  if ((t = dict_find(iter, MESSAGE_KEY_RECENT_PROJECT_NAME))) {
+    strncpy(r->project, t->value->cstring, PROJ_NAME_LEN - 1);
+    r->project[PROJ_NAME_LEN - 1] = '\0';
+  }
+}
+
 // --- Incoming: timer state ---------------------------------------------------
 
 static void apply_timer(DictionaryIterator *iter) {
@@ -178,12 +204,17 @@ static void apply_timer(DictionaryIterator *iter) {
   tm->pending = false;
   tm->ts_id = 0;
   tm->act_id = 0;
+  tm->proj_id = 0;
   tm->begin = 0;
   tm->act_name[0] = '\0';
 
   Tuple *t;
   if ((t = dict_find(iter, MESSAGE_KEY_TIMER_TS_ID)))  tm->ts_id  = tuple_int(t);
   if ((t = dict_find(iter, MESSAGE_KEY_TIMER_ACT_ID))) tm->act_id = tuple_int(t);
+  // The project the running timesheet is booked on — not necessarily the one
+  // selected on the watch (it can be started elsewhere, or the selection can
+  // change while a timer runs). The hero resolves the name from the project list.
+  if ((t = dict_find(iter, MESSAGE_KEY_TIMER_PROJECT_ID))) tm->proj_id = tuple_int(t);
   if ((t = dict_find(iter, MESSAGE_KEY_TIMER_BEGIN))) {
     tm->begin = (time_t)tuple_int(t);
     // Kimai rounds the begin down to the whole minute, and the server clock can
@@ -247,8 +278,13 @@ void config_inbox_received(DictionaryIterator *iter, void *context) {
     data_set_project_load_state(LOAD_OK);
     s_proj_total = tuple_int(t);
   }
+  if ((t = dict_find(iter, MESSAGE_KEY_RECENT_COUNT))) {
+    data_clear_recents();
+    data_set_recent_load_state(LOAD_OK);
+  }
 
   apply_activity(iter);
+  if (dict_find(iter, MESSAGE_KEY_RECENT_INDEX)) { apply_recent(iter); }
   if (dict_find(iter, MESSAGE_KEY_PROJ_INDEX)) { apply_project(iter); }
   apply_timer(iter);
 
@@ -311,6 +347,7 @@ static void send_with_project(uint32_t key, int value) {
 }
 
 void config_request_projects(void)      { send_flag(MESSAGE_KEY_REQUEST_PROJECTS); }
+void config_request_recents(void)       { send_flag(MESSAGE_KEY_REQUEST_RECENTS); }
 void config_request_activities(void)    { send_with_project(MESSAGE_KEY_REQUEST_ACTIVITIES, 1); }
 void config_start_activity(int act_id)  { send_with_project(MESSAGE_KEY_START_ACTIVITY, act_id); }
 void config_stop_activity(void)         { send_flag(MESSAGE_KEY_STOP_ACTIVITY); }

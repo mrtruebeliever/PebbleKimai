@@ -1,26 +1,23 @@
 #include "timer_actions.h"
 #include "activity_list.h"
-#include "confirm_menu.h"
 #include "config.h"
 #include "data.h"
 #include "hero.h"
 #include "i18n.h"
+#include "theme.h"
 
-static int s_target_act_id = 0;   // activity the pending switch confirmation acts on
+// What a pending switch confirmation acts on. A full copy, not an id: a recent
+// activity can belong to a project whose activities are not currently loaded,
+// so it cannot be looked up in the list when the confirmation fires.
+static Activity s_target;
+static int      s_target_pid = 0;
+static char     s_target_pname[PROJ_NAME_LEN] = "";
 
 // Repaint whichever of the two windows is on screen (both reloads are null-safe
 // against their own layer pointers, so the off-screen one is a no-op).
 static void reload_views(void) {
   hero_reload();
   activity_list_reload();
-}
-
-static Activity *activity_by_id(int id) {
-  for (int i = 0; i < data_activity_count(); i++) {
-    Activity *a = data_activity(i);
-    if (a && a->id == id) return a;
-  }
-  return NULL;
 }
 
 // The UI flips immediately; config.c clears `pending` on every confirmed state.
@@ -70,32 +67,89 @@ void timer_refresh(void) {
   reload_views();
 }
 
-// --- Confirmations (touch- and button-friendly menu) -------------------------
+void timer_start_in_project(const Activity *a, int project_id, const char *project_name) {
+  if (!a) return;
+  if (project_id > 0 && project_id != data_active_project_id()) {
+    Project *p = data_project_by_id(project_id);
+    config_set_active_project(project_id,
+                              p ? p->name : (project_name ? project_name : ""),
+                              p ? p->customer_id : 0,
+                              p ? p->customer : "");
+  }
+  Activity copy = *a;
+  if (data_timer()->status == TIMER_RUNNING) { timer_switch(&copy); }
+  else                                       { timer_start(&copy); }
+}
+
+// --- Confirmations (the watch's own ActionMenu) ------------------------------
 
 static void switch_to_target(void) {
-  Activity *a = activity_by_id(s_target_act_id);
-  if (a) { timer_switch(a); }
+  timer_start_in_project(&s_target, s_target_pid, s_target_pname);
+}
+
+// Runs the chosen item's function, which was stored as the item's action data.
+static void perform(ActionMenu *menu, const ActionMenuItem *item, void *context) {
+  void (*fn)(void) = action_menu_item_get_action_data(item);
+  if (fn) { fn(); }
+}
+
+// The level is owned by the menu for as long as it is open.
+static void did_close(ActionMenu *menu, const ActionMenuItem *performed, void *context) {
+  action_menu_hierarchy_destroy(action_menu_get_root_level(menu), NULL, NULL);
+}
+
+static void show_menu(const char *labels[], void (*fns[])(void), int n) {
+  ActionMenuLevel *root = action_menu_level_create(n);
+  if (!root) return;
+  for (int i = 0; i < n; i++) {
+    action_menu_level_add_action(root, labels[i], perform, (void *)(uintptr_t)fns[i]);
+  }
+  ActionMenuConfig config = {
+    .root_level = root,
+    .colors = { .background = theme_accent(), .foreground = GColorBlack },
+    .align = ActionMenuAlignTop,
+    .did_close = did_close,
+  };
+  action_menu_open(&config);
 }
 
 void timer_open_stop_menu(void) {
-  ConfirmItem items[] = { { i18n(STR_STOP_TIMER), timer_stop } };
-  confirm_menu_show(items, 1);
+  const char *labels[] = { i18n(STR_STOP_TIMER) };
+  void (*fns[])(void) = { timer_stop };
+  show_menu(labels, fns, 1);
+}
+
+static void open_switch_menu(const Activity *a) {
+  // The label must outlive this call: the menu reads it while it is open.
+  static char label[ACT_NAME_LEN + 20];
+  snprintf(label, sizeof(label), i18n(STR_SWITCH_TO), a->name);
+  s_target = *a;
+  const char *labels[] = { label };
+  void (*fns[])(void) = { switch_to_target };
+  show_menu(labels, fns, 1);
 }
 
 void timer_open_switch_menu(Activity *a) {
   if (!a) return;
-  static char label[ACT_NAME_LEN + 20];
-  snprintf(label, sizeof(label), i18n(STR_SWITCH_TO), a->name);
-  s_target_act_id = a->id;
-  ConfirmItem items[] = { { label, switch_to_target } };
-  confirm_menu_show(items, 1);
+  s_target_pid = 0;
+  s_target_pname[0] = '\0';
+  open_switch_menu(a);
+}
+
+void timer_open_switch_menu_in(const Activity *a, int project_id, const char *project_name) {
+  if (!a) return;
+  s_target_pid = project_id;
+  strncpy(s_target_pname, project_name ? project_name : "", PROJ_NAME_LEN - 1);
+  s_target_pname[PROJ_NAME_LEN - 1] = '\0';
+  open_switch_menu(a);
 }
 
 void timer_open_long_press_menu(void) {
   bool running = data_timer()->status == TIMER_RUNNING;
-  ConfirmItem items[2];
+  const char *labels[2];
+  void (*fns[2])(void);
   int n = 0;
-  items[n++] = (ConfirmItem){ i18n(STR_REFRESH), timer_refresh };
-  if (running) { items[n++] = (ConfirmItem){ i18n(STR_STOP_TIMER), timer_stop }; }
-  confirm_menu_show(items, n);
+  labels[n] = i18n(STR_REFRESH); fns[n] = timer_refresh; n++;
+  if (running) { labels[n] = i18n(STR_STOP_TIMER); fns[n] = timer_stop; n++; }
+  show_menu(labels, fns, n);
 }

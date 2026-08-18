@@ -43,6 +43,7 @@ void config_note_last_activity(int id, const char *name);
 
 // --- Outbox helpers ----------------------------------------------------------
 void config_request_projects(void);                    // reload the project list
+void config_request_recents(void);                     // reload the recent-activity shortcut list
 void config_request_activities(void);                  // reload the active project's activities + timer
 void config_start_activity(int act_id);                // start; books on the active project
 void config_stop_activity(void);

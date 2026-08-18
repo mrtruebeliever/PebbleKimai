@@ -1,15 +1,26 @@
 #pragma once
 #include <pebble.h>
 
-// Touch navigation, done by hand from the raw touch stream.
+// Touch navigation from the raw touch stream, for the windows the system
+// bridge cannot serve.
 //
-// The system gesture bridge (app_touch_navigation_enable) crashes the app on
-// firmware 4.33.1, so every window drives touch itself: this layer turns the
-// raw Touchdown/PositionUpdate/Liftoff stream into finger-following kinetic
-// scrolling plus the two discrete gestures a window has to act on.
+// The system gesture bridge (app_touch_navigation_enable) drives the menu
+// windows — and, importantly, the system ActionMenu, which an app cannot reach
+// from the raw stream at all. It faults inside firmware 4.33.1 and is therefore
+// only switched on from the firmware that fixed it (see touch_nav_bridge_active
+// and pebblekimai.c). Where it is off, every window drives touch itself through
+// this layer, which turns the raw Touchdown/PositionUpdate/Liftoff stream into
+// finger-following kinetic scrolling plus the discrete gestures.
+//
+// The hero card is never bridged: it is not a MenuLayer, so the system has no
+// idea what its regions mean, and it keeps its own tap zones either way.
 //
 // One window is active at a time; the layer keeps the drag and momentum state
 // for it. Windows call touch_nav_reset() when they disappear.
+
+// Whether the system touch bridge is driving the menu windows this run.
+bool touch_nav_bridge_active(void);
+void touch_nav_set_bridge_active(bool active);
 
 typedef enum {
   TOUCH_NAV_NONE = 0,   // nothing to do (drag in progress, or a stray gesture)

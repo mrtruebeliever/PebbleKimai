@@ -7,11 +7,11 @@
 #include "theme.h"
 #include "timer_actions.h"
 
-#define ROW_H         40
-#define ROW_RUNNING_H 58
+#define ROW_H         34
+#define ROW_RUNNING_H 48
 #define ROW_STATUS_H  54   // two Gothic-18 lines: several status strings
                            // embed a newline and 44 clipped the second
-#define ROW_PROJECT_H 44
+#define ROW_PROJECT_H 40   // 32 without a customer line, see get_cell_height
 
 static Window    *s_window = NULL;
 static MenuLayer *s_menu = NULL;
@@ -52,7 +52,9 @@ static uint16_t get_num_rows(MenuLayer *menu, uint16_t section, void *context) {
 }
 
 static int16_t get_cell_height(MenuLayer *menu, MenuIndex *idx, void *context) {
-  if (has_project_row() && idx->row == 0) return ROW_PROJECT_H;
+  if (has_project_row() && idx->row == 0) {
+    return (data_active_project_customer()[0] && data_customer_count() > 1) ? ROW_PROJECT_H : 32;
+  }
   int ai = idx->row - act_offset();
   if (!list_ready() || data_activity_count() == 0) return ROW_STATUS_H;
   Activity *a = data_activity(ai);
@@ -81,17 +83,22 @@ static void draw_project_row(GContext *ctx, const Layer *cell) {
   graphics_context_set_fill_color(ctx, selected ? GColorBlack : theme_accent());
   graphics_fill_rect(ctx, GRect(0, 0, 4, b.size.h), 0, GCornerNone);
 
-  graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, name[0] ? name : i18n(STR_NO_PROJECT_SET),
-                     fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
-                     GRect(10, cust[0] ? 0 : 6, b.size.w - 14, 26),
-                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
-  if (cust[0]) {
-    graphics_context_set_text_color(ctx, selected ? GColorBlack : GColorDarkGray);
-    graphics_draw_text(ctx, cust, fonts_get_system_font(FONT_KEY_GOTHIC_14),
-                       GRect(10, 25, b.size.w - 14, 16),
+  // Customer on top in bold, project underneath: the shape the pickers use.
+  // Only worth a line when the instance actually has more than one customer,
+  // the same rule the project picker applies.
+  bool show_cust = cust[0] && data_customer_count() > 1;
+  if (show_cust) {
+    graphics_context_set_text_color(ctx, selected ? GColorBlack
+                                                  : PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack));
+    graphics_draw_text(ctx, cust, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+                       GRect(10, -1, b.size.w - 14, 20),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
+  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_draw_text(ctx, name[0] ? name : i18n(STR_NO_PROJECT_SET),
+                     fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+                     GRect(10, show_cust ? 17 : 5, b.size.w - 14, 22),
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *context) {
@@ -121,8 +128,8 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
   // Never dim the selected row: DarkGray on the KellyGreen highlight is a
   // poor pair, and it lands on the row the user is about to act on.
   graphics_context_set_text_color(ctx, (dim && !selected) ? GColorDarkGray : GColorBlack);
-  graphics_draw_text(ctx, a->name, fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD),
-                     GRect(10, running ? 2 : (b.size.h - 32) / 2, b.size.w - 16, 28),
+  graphics_draw_text(ctx, a->name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+                     GRect(10, running ? 2 : (b.size.h - 24) / 2, b.size.w - 16, 24),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 
   if (running) {
@@ -134,7 +141,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
     static char line[24];
     snprintf(line, sizeof(line), "%s%s", elapsed, tm->pending ? " ..." : "");
     graphics_draw_text(ctx, line, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                       GRect(10, 30, b.size.w - 16, 22),
+                       GRect(10, 24, b.size.w - 16, 22),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
 }
@@ -261,7 +268,8 @@ static void window_load(Window *window) {
   });
   menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
   menu_layer_set_click_config_onto_window(s_menu, window);
-  window_set_touch_bridge_disabled(window, true);
+  // Let the system drive this menu when the bridge is available.
+  window_set_touch_bridge_disabled(window, !touch_nav_bridge_active());
   layer_add_child(root, menu_layer_get_layer(s_menu));
 
   s_header = header_bar_create(b.size.w);

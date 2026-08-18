@@ -1,5 +1,46 @@
 # Changelog
 
+## 2.8.1
+
+Everything below shipped as one round of work on the start screen and the lists;
+none of the intermediate versions were released.
+
+- **Recent activities, across every project.** A long press of Down on the start
+  screen (or a tap on its status icon) opens the last five activities that
+  actually ran, newest first, each with the project it ran on. Picking one books
+  on *that* project and selects it on the watch — a project-bound activity is
+  rejected by Kimai under any other project, so the booking project follows the
+  row. The list is derived from the timesheet history the phone already fetches,
+  so it also shows what you logged in the web interface.
+- **Redesigned start screen.** The project sits in bold above the activity name
+  instead of at the bottom, the status text became an icon in the bottom-right
+  corner, and the customer moved to the bottom in bold. Long activity names wrap
+  onto a second line rather than ending in an ellipsis, and the call to action
+  fits on screen in every language.
+- **The project shown is the one the running timesheet is booked on**, which is
+  not the same as the project selected on the watch when a timer was started
+  elsewhere or the selection changed mid-run. Picking another project while a
+  timer runs adds a "Next:" line, so that change no longer happens invisibly.
+- **Tap the running time to stop it**, through the same confirmation the buttons
+  use, so a stray tap costs nothing. (Kimai has no pause: stopping closes the
+  entry and starting again opens a new one.)
+- **Every part of the start screen is a target**: status icon = recent
+  activities, project line = project picker, elapsed time = stop, call to action
+  = start again, anywhere else = the activity list.
+- **The lists share one shape and are denser**: a bold grey context line on top
+  (the project in the recent list, the customer in the pickers, shown only when
+  the instance has more than one) with the row's own subject in bold underneath.
+  Rows are 34px in the activity list, 40px in the recent list, and 32px for a
+  project row without a customer above it — all five recent activities fit on
+  one screen.
+- **Confirmations use the watch's own ActionMenu again**, and the menus are back
+  on the system's touch navigation. PebbleKimai's hand-built confirmation menu
+  existed only because the system menu never received touch events; that is
+  fixed from firmware 4.33.2. `app_touch_navigation_enable()` faults inside
+  firmware 4.33.1 ([PebbleOS#1865](https://github.com/coredevices/PebbleOS/issues/1865)),
+  so the bridge is switched on above that version only — an older watch keeps
+  the hand-rolled touch layer instead of crashing.
+
 ## 2.4.0
 
 - **Touch navigation, done in the app.** The activity list, project picker and
