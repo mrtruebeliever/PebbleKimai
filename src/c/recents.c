@@ -53,7 +53,7 @@ static uint16_t get_num_rows(MenuLayer *ml, uint16_t section, void *ctx) {
 }
 
 static int16_t get_cell_height(MenuLayer *ml, MenuIndex *ci, void *ctx) {
-  return 40;
+  return 40 + theme_name_grow();
 }
 
 // Project above the activity: first where it is booked, then what it is. The
@@ -80,8 +80,8 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *ci, void *c) {
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
   graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, r->name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                     GRect(8, r->project[0] ? 17 : 9, b.size.w - 12, 22),
+  graphics_draw_text(ctx, r->name, theme_name_font(),
+                     GRect(8, r->project[0] ? 17 : 9, b.size.w - 12, 22 + theme_name_grow()),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
@@ -143,7 +143,7 @@ static void window_load(Window *window) {
   menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
   menu_layer_set_click_config_onto_window(s_menu, window);
   // Let the system drive this menu when the bridge is available.
-  window_set_touch_bridge_disabled(window, !touch_nav_bridge_active());
+  (void)window_set_touch_bridge_disabled(window, !touch_nav_bridge_active());
   layer_add_child(root, menu_layer_get_layer(s_menu));
 
   s_header = header_bar_create(b.size.w);

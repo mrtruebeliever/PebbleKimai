@@ -53,14 +53,15 @@ static uint16_t get_num_rows(MenuLayer *menu, uint16_t section, void *context) {
 
 static int16_t get_cell_height(MenuLayer *menu, MenuIndex *idx, void *context) {
   if (has_project_row() && idx->row == 0) {
-    return (data_active_project_customer()[0] && data_customer_count() > 1) ? ROW_PROJECT_H : 32;
+    return ((data_active_project_customer()[0] && data_customer_count() > 1) ? ROW_PROJECT_H : 32)
+           + theme_name_grow();
   }
   int ai = idx->row - act_offset();
   if (!list_ready() || data_activity_count() == 0) return ROW_STATUS_H;
   Activity *a = data_activity(ai);
   TimerState *tm = data_timer();
   bool running = a && tm->status == TIMER_RUNNING && tm->act_id == a->id;
-  return running ? ROW_RUNNING_H : ROW_H;
+  return (running ? ROW_RUNNING_H : ROW_H) + theme_name_grow();
 }
 
 static const char *status_text(void) {
@@ -95,9 +96,8 @@ static void draw_project_row(GContext *ctx, const Layer *cell) {
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
   graphics_context_set_text_color(ctx, GColorBlack);
-  graphics_draw_text(ctx, name[0] ? name : i18n(STR_NO_PROJECT_SET),
-                     fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                     GRect(10, show_cust ? 17 : 5, b.size.w - 14, 22),
+  graphics_draw_text(ctx, name[0] ? name : i18n(STR_NO_PROJECT_SET), theme_name_font(),
+                     GRect(10, show_cust ? 17 : 5, b.size.w - 14, 22 + theme_name_grow()),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
@@ -128,8 +128,9 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
   // Never dim the selected row: DarkGray on the KellyGreen highlight is a
   // poor pair, and it lands on the row the user is about to act on.
   graphics_context_set_text_color(ctx, (dim && !selected) ? GColorDarkGray : GColorBlack);
-  graphics_draw_text(ctx, a->name, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                     GRect(10, running ? 2 : (b.size.h - 24) / 2, b.size.w - 16, 24),
+  const int16_t name_h = 24 + theme_name_grow();
+  graphics_draw_text(ctx, a->name, theme_name_font(),
+                     GRect(10, running ? 2 : (b.size.h - name_h) / 2, b.size.w - 16, name_h),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 
   if (running) {
@@ -141,7 +142,7 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
     static char line[24];
     snprintf(line, sizeof(line), "%s%s", elapsed, tm->pending ? " ..." : "");
     graphics_draw_text(ctx, line, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                       GRect(10, 24, b.size.w - 16, 22),
+                       GRect(10, name_h, b.size.w - 16, 22),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
 }
@@ -268,8 +269,9 @@ static void window_load(Window *window) {
   });
   menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
   menu_layer_set_click_config_onto_window(s_menu, window);
-  // Let the system drive this menu when the bridge is available.
-  window_set_touch_bridge_disabled(window, !touch_nav_bridge_active());
+  // Let the system drive this menu when the bridge is available. (void): on
+  // platforms without touch the SDK stubs this out as a bare (0).
+  (void)window_set_touch_bridge_disabled(window, !touch_nav_bridge_active());
   layer_add_child(root, menu_layer_get_layer(s_menu));
 
   s_header = header_bar_create(b.size.w);

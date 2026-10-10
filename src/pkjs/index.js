@@ -4,6 +4,7 @@ var buildConfig = i18n.buildConfig;
 var keys = require('message_keys');
 
 // LANG stores the raw setting: '255' = Automatic (follow watch locale), or '0'..'4'.
+function getTimerSound() { return localStorage.getItem('TIMER_SOUND') === '1'; }
 function getLangRaw() { var v = localStorage.getItem('LANG'); return (v == null || v === '') ? '255' : v; }
 // Language to render the settings page in (Automatic falls back to English).
 function getPageLang() { var r = parseInt(getLangRaw(), 10); return (r >= 0 && r < 5) ? r : 0; }
@@ -496,6 +497,7 @@ function settingsSnapshot() {
     url: getBase(),
     token: getToken(),
     langRaw: getLangRaw(),
+    timerSound: getTimerSound(),
     defProject: String(getDefProject() || ''),
     defCustomer: String(getDefCustomer() || '')
   };
@@ -543,6 +545,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
   var defCustomer = parseInt(pick('DEFAULT_CUSTOMER'), 10) || 0;
   var lang = parseInt(pick('LANGUAGE'), 10);
   if (isNaN(lang)) { lang = 255; }  // 255 = Automatic (follow watch locale)
+  var timerSound = !!pick('TIMER_SOUND');
   // Token value is never logged.
   console.log('webviewclosed: urlSet=' + !!url + ' tokenLen=' + token.length +
               ' defProject=' + defProject + ' defCustomer=' + defCustomer + ' lang=' + lang);
@@ -550,6 +553,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
   localStorage.setItem('KIMAI_URL', url);
   localStorage.setItem('KIMAI_TOKEN', token);
   localStorage.setItem('LANG', String(lang));
+  localStorage.setItem('TIMER_SOUND', timerSound ? '1' : '0');
   localStorage.setItem('DEF_PROJECT', String(defProject || ''));
   localStorage.setItem('DEF_CUSTOMER', String(defCustomer || ''));
 
@@ -557,6 +561,7 @@ Pebble.addEventListener('webviewclosed', function (e) {
   // 0 (="first/all") is intentionally sent so the watch can ignore it.
   var msg = {};
   msg[keys.LANGUAGE] = lang;
+  msg[keys.TIMER_SOUND] = timerSound ? 1 : 0;
   msg[keys.DEFAULT_PROJECT] = defProject;
   msg[keys.DEFAULT_CUSTOMER] = defCustomer;
   Pebble.sendAppMessage(msg, function () {

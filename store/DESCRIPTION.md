@@ -34,6 +34,9 @@ FEATURES
   stray tap on the screen.
 • Live, drift-free elapsed time: the watch always recomputes it from the
   server's start time, so it stays accurate even after a reconnect.
+• The running timer in the app list, ticking on after the app closes.
+• Optional tones on start and stop, and a green backlight while a timer runs
+  (Pebble Time 2). List rows follow your watch's text size.
 • Available in English, Nederlands, Français, Deutsch and Español — on the watch
   and in the settings — following your watch language or set manually.
 • Privacy: your API token stays on the phone and is never sent to the watch.

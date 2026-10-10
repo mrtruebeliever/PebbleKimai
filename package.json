@@ -1,7 +1,7 @@
 {
   "name": "pebblekimai",
   "author": "mrtruebeliever",
-  "version": "2.8.1",
+  "version": "2.9.0",
   "license": "MIT",
   "keywords": ["pebble-app"],
   "private": true,
@@ -64,7 +64,8 @@
       "RECENT_ID",
       "RECENT_NAME",
       "RECENT_PROJECT_ID",
-      "RECENT_PROJECT_NAME"
+      "RECENT_PROJECT_NAME",
+      "TIMER_SOUND"
     ],
     "resources": {
       "media": [

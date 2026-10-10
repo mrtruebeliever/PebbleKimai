@@ -1,16 +1,19 @@
 #include <pebble.h>
 #include "config.h"
 #include "data.h"
+#include "glance.h"
 #include "activity_list.h"
 #include "header_bar.h"
 #include "hero.h"
 #include "i18n.h"
 #include "project_picker.h"
 #include "recents.h"
+#include "timer_actions.h"
 #include "touch_nav.h"
 #include "toast.h"
 
 static void on_data_changed(void) {
+  timer_apply_tint();
   hero_reload();
   activity_list_reload();
   project_picker_reload();
@@ -96,6 +99,7 @@ static void init(void) {
 }
 
 static void deinit(void) {
+  glance_update();
   activity_list_destroy();
   hero_destroy();
   header_bar_deinit();

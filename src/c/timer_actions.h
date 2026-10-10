@@ -11,6 +11,10 @@ void timer_switch(Activity *a);           // stop the running one, start `a`
 void timer_stop(void);                    // stop the running timer
 void timer_refresh(void);                 // reload projects + activities
 
+// Colour backlight (Time 2; a no-op elsewhere): green while a timer runs, the
+// user's own colour otherwise. Called on every timer state change.
+void timer_apply_tint(void);
+
 // Starts `a` on a specific project, selecting that project first. Used by the
 // recent-activity shortcut, which crosses projects: a project-bound activity is
 // rejected by Kimai under any other project, so the booking project has to

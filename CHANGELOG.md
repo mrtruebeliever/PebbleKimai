@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.9.0
+
+- **Sound on start/stop** (phone settings, off by default, Pebble Time 2):
+  starting or switching the timer plays a short rising tone, stopping it a
+  falling one, alongside the vibration. Silent during Quiet Time and when the
+  watch speaker is muted (new `TIMER_SOUND` message key).
+- **List text follows the watch's text size.** The main line of every list row
+  (activity, project, recent) is Gothic 18 bold at the watch's default size,
+  and steps to 14 or 24 bold with Settings → Display → Text size; rows grow to
+  match.
+- **Green backlight while a timer runs (Pebble Time 2).** The colour backlight
+  turns green while a timer is running and returns to the watch's own colour
+  when it stops or the app closes.
+- **Running timer in the launcher.** While a timer runs, Kimai's line in the
+  app list shows the elapsed time and the activity ("0:43:32 · Development").
+  The firmware keeps it ticking after the app closes; it clears once the timer
+  is stopped (not on aplite, which has no app glances).
+- Silenced the "statement with no effect" warnings on aplite, basalt and chalk,
+  where the SDK stubs `window_set_touch_bridge_disabled()` out as a bare `(0)`.
+
 ## 2.8.1
 
 Everything below shipped as one round of work on the start screen and the lists;

@@ -351,7 +351,7 @@ static void window_load(Window *window) {
   layer_add_child(root, s_header);
 
   window_set_click_config_provider(window, click_config);
-  window_set_touch_bridge_disabled(window, true);   // a card, not a menu: own tap zones
+  (void)window_set_touch_bridge_disabled(window, true);   // a card, not a menu: own tap zones
 }
 
 static void window_appear(Window *window) {

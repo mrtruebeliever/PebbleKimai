@@ -16,8 +16,50 @@ static char     s_target_pname[PROJ_NAME_LEN] = "";
 // Repaint whichever of the two windows is on screen (both reloads are null-safe
 // against their own layer pointers, so the off-screen one is a no-op).
 static void reload_views(void) {
+  timer_apply_tint();
   hero_reload();
   activity_list_reload();
+}
+
+#define TINT_RUNNING 0x50FF78u
+
+void timer_apply_tint(void) {
+  static int s_tinted = -1;   // -1 unknown, 0 system colour, 1 green
+  int want = data_timer()->status == TIMER_RUNNING ? 1 : 0;
+  if (want == s_tinted) return;
+  s_tinted = want;
+  // (void): on platforms without a colour backlight these are `(0)` macros.
+  if (want) (void)light_set_color_rgb888(TINT_RUNNING);
+  else      (void)light_set_system_color();
+}
+
+// --- Confirmation tones (optional, phone settings) ---------------------------
+// Start rises, stop falls, so the two can be told apart without looking. Only
+// the Time 2 (emery) has a speaker; elsewhere the speaker calls do not exist.
+#if defined(PBL_PLATFORM_EMERY)
+static const SpeakerNote TONE_START[] = {
+  {79, SpeakerWaveformSine, 70, 80, 0}, {84, SpeakerWaveformSine, 90, 85, 0},
+  {84, SpeakerWaveformSine, 120, 22, 0},
+};
+static const SpeakerNote TONE_STOP[] = {
+  {84, SpeakerWaveformSine, 70, 80, 0}, {79, SpeakerWaveformSine, 90, 80, 0},
+  {79, SpeakerWaveformSine, 120, 22, 0},
+};
+#define TONE_VOLUME 60
+#endif
+
+// The vibration the app always gave, plus the tone when switched on. Both stay
+// quiet during Quiet Time; the tone also follows the watch's speaker mute.
+static void confirm(bool start) {
+  if (quiet_time_is_active()) { return; }
+  vibes_short_pulse();
+#if defined(PBL_PLATFORM_EMERY)
+  if (!config_timer_sound() || speaker_is_muted()) { return; }
+  if (start) speaker_play_notes(TONE_START, ARRAY_LENGTH(TONE_START), TONE_VOLUME);
+  else       speaker_play_notes(TONE_STOP, ARRAY_LENGTH(TONE_STOP), TONE_VOLUME);
+#else
+  (void)start;
+#endif
 }
 
 // The UI flips immediately; config.c clears `pending` on every confirmed state.
@@ -37,7 +79,7 @@ void timer_start(Activity *a) {
   if (!a) return;
   begin_local_run(a);
   config_start_activity(a->id);
-  vibes_short_pulse();
+  confirm(true);
   reload_views();
 }
 
@@ -45,7 +87,7 @@ void timer_switch(Activity *a) {
   if (!a) return;
   begin_local_run(a);
   config_switch_activity(a->id);
-  vibes_short_pulse();
+  confirm(true);
   reload_views();
 }
 
@@ -56,7 +98,7 @@ void timer_stop(void) {
   tm->begin = 0;
   tm->pending = true;
   config_stop_activity();
-  vibes_short_pulse();
+  confirm(false);
   reload_views();
 }
 

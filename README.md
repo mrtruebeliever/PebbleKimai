@@ -33,6 +33,15 @@ the header bar; the Kimai server is always the source of truth.
   below), each group ordered by most time tracked in the last 90 days.
 - **Start** with one press while idle; **stop** and **switch** ask for a single
   confirmation tap so a running timer is never killed by accident.
+- **Sound on start/stop** *(optional, Pebble Time 2)* — a short tone, rising to
+  start and falling to stop, on top of the vibration. Silent during Quiet Time
+  or when the watch speaker is muted.
+- **Running timer in the app list** — while a timer runs, Kimai's line in the
+  launcher shows the elapsed time and the activity ("0:43:32 · Development"),
+  ticking on after the app closes (not on aplite).
+- **Green backlight while a timer runs** *(Pebble Time 2)* — the colour
+  backlight turns green until the timer stops or the app closes.
+- List rows follow the watch's **text size** (Settings → Display → Text size).
 - Optimistic UI: the timer starts ticking immediately, then reconciles with the
   server's `GET /api/timesheets/active` state (elapsed time is always recomputed
   from the server's begin time, so clock drift never accumulates).

@@ -8,6 +8,7 @@ var L = {
     token_label: 'API token',
     token_desc: 'Create one in Kimai under your user profile > API Access. It stays on your phone only and is never sent to the watch.',
     general_heading: 'General', language: 'Language', automatic: 'Automatic (watch language)',
+    sound_label: 'Sound on start/stop', sound_desc: 'A short tone when you start or stop the timer (rising to start, falling to stop). Pebble Time 2 only; silent during Quiet Time or when the speaker is muted.',
     booking_heading: 'Booking',
     project_label: 'Default project', project_first: '(first project)',
     customer_label: 'Default customer', customer_any: '(all customers)',
@@ -20,6 +21,7 @@ var L = {
     token_label: 'API-token',
     token_desc: 'Maak er een aan in Kimai onder je gebruikersprofiel > API-toegang. De token blijft alleen op je telefoon en wordt nooit naar het horloge gestuurd.',
     general_heading: 'Algemeen', language: 'Taal', automatic: 'Automatisch (horlogetaal)',
+    sound_label: 'Geluid bij starten/stoppen', sound_desc: 'Een kort toontje als je de timer start of stopt (stijgend bij start, dalend bij stop). Alleen Pebble Time 2; stil tijdens Quiet Time of als de speaker gedempt is.',
     booking_heading: 'Boeken',
     project_label: 'Standaardproject', project_first: '(eerste project)',
     customer_label: 'Standaardklant', customer_any: '(alle klanten)',
@@ -32,6 +34,7 @@ var L = {
     token_label: 'Jeton API',
     token_desc: 'Créez-en un dans Kimai sous votre profil > Accès API. Il reste uniquement sur votre téléphone et n\'est jamais envoyé à la montre.',
     general_heading: 'Général', language: 'Langue', automatic: 'Automatique (langue de la montre)',
+    sound_label: 'Son au démarrage/arrêt', sound_desc: 'Un court son quand vous démarrez ou arrêtez le chronomètre (montant au démarrage, descendant à l\'arrêt). Pebble Time 2 uniquement ; muet pendant Quiet Time ou si le haut-parleur est coupé.',
     booking_heading: 'Saisie',
     project_label: 'Projet par défaut', project_first: '(premier projet)',
     customer_label: 'Client par défaut', customer_any: '(tous les clients)',
@@ -44,6 +47,7 @@ var L = {
     token_label: 'API-Token',
     token_desc: 'Erstelle einen in Kimai unter deinem Benutzerprofil > API-Zugriff. Er bleibt nur auf deinem Telefon und wird nie an die Uhr gesendet.',
     general_heading: 'Allgemein', language: 'Sprache', automatic: 'Automatisch (Uhrsprache)',
+    sound_label: 'Ton bei Start/Stopp', sound_desc: 'Ein kurzer Ton beim Starten oder Stoppen des Timers (steigend beim Start, fallend beim Stopp). Nur Pebble Time 2; stumm während Quiet Time oder bei stummgeschaltetem Lautsprecher.',
     booking_heading: 'Buchung',
     project_label: 'Standardprojekt', project_first: '(erstes Projekt)',
     customer_label: 'Standardkunde', customer_any: '(alle Kunden)',
@@ -56,6 +60,7 @@ var L = {
     token_label: 'Token de API',
     token_desc: 'Crea uno en Kimai en tu perfil de usuario > Acceso API. Permanece solo en tu teléfono y nunca se envía al reloj.',
     general_heading: 'General', language: 'Idioma', automatic: 'Automático (idioma del reloj)',
+    sound_label: 'Sonido al iniciar/detener', sound_desc: 'Un tono breve al iniciar o detener el temporizador (ascendente al iniciar, descendente al detener). Solo Pebble Time 2; silencio durante Quiet Time o con el altavoz silenciado.',
     booking_heading: 'Registro',
     project_label: 'Proyecto predeterminado', project_first: '(primer proyecto)',
     customer_label: 'Cliente predeterminado', customer_any: '(todos los clientes)',
@@ -93,7 +98,9 @@ function buildConfig(langIdx, projects, customers, snap) {
           { label: 'Français', value: '2' },
           { label: 'Deutsch', value: '3' },
           { label: 'Español', value: '4' }
-        ] }
+        ] },
+      { type: 'toggle', messageKey: 'TIMER_SOUND', label: s.sound_label,
+        defaultValue: !!snap.timerSound, description: s.sound_desc }
     ] }
   ];
 

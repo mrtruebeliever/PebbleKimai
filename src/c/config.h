@@ -13,7 +13,8 @@
 #define PERSIST_LAST_ACT_NAME 9
 // 10 was PERSIST_TOUCH (Clay touch toggle, removed once SDK 4.33 made touch a
 // system-wide watch setting). Do not reuse.
-// (next free persist key: 11)
+#define PERSIST_TIMER_SOUND   11
+// (next free persist key: 12)
 
 // AppMessage in/outbox for the Kimai companion protocol.
 
@@ -22,6 +23,9 @@ void config_load(void);
 
 // Current UI language index (Lang from i18n.h). Valid after config_load.
 int  config_lang(void);
+
+// True when starting/stopping the timer also plays a short tone. Default false.
+bool config_timer_sound(void);
 
 // Fired whenever incoming data changed (activities, projects, load state, timer).
 void config_set_change_callback(void (*cb)(void));
