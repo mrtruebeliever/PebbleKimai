@@ -1,4 +1,4 @@
-var Clay = require('pebble-clay');
+var Clay = require('@rebble/clay');
 var i18n = require('./i18n');
 var buildConfig = i18n.buildConfig;
 var keys = require('message_keys');

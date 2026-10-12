@@ -1,12 +1,12 @@
 {
   "name": "pebblekimai",
   "author": "mrtruebeliever",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "license": "MIT",
   "keywords": ["pebble-app"],
   "private": true,
   "dependencies": {
-    "pebble-clay": "^1.0.4"
+    "@rebble/clay": "^1.1.0"
   },
   "pebble": {
     "displayName": "PebbleKimai",
@@ -21,7 +21,9 @@
       "basalt",
       "chalk",
       "diorite",
-      "emery"
+      "emery",
+      "flint",
+      "gabbro"
     ],
     "watchapp": {
       "watchface": false

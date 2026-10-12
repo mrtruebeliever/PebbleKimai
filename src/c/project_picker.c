@@ -112,19 +112,18 @@ static int16_t get_cell_height(MenuLayer *ml, MenuIndex *ci, void *ctx) {
 // subject underneath at full size. Here the context is the customer, shown only
 // when the instance has more than one.
 static void draw_text_row(GContext *ctx, const Layer *cell, const char *title, const char *sub) {
-  GRect b = layer_get_bounds(cell);
+  GRect b = theme_row_bounds(cell);
   bool hl = menu_cell_layer_is_highlighted(cell);
   bool has_sub = sub && sub[0];
   if (has_sub) {
-    graphics_context_set_text_color(ctx, hl ? GColorBlack
-                                            : PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack));
+    graphics_context_set_text_color(ctx, theme_row_sub(hl));
     graphics_draw_text(ctx, sub, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                       GRect(8, -1, b.size.w - 12, 20),
+                       GRect(b.origin.x + 8, -1, b.size.w - 12, 20),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
-  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_context_set_text_color(ctx, theme_row_fg(hl));
   graphics_draw_text(ctx, title, theme_name_font(),
-                     GRect(8, has_sub ? 17 : 5, b.size.w - 12, 22 + theme_name_grow()),
+                     GRect(b.origin.x + 8, has_sub ? 17 : 5, b.size.w - 12, 22 + theme_name_grow()),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
@@ -201,7 +200,7 @@ static void window_load(Window *window) {
     .select_click = select_click,
   });
   menu_layer_set_normal_colors(s_menu, GColorWhite, GColorBlack);
-  menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
+  menu_layer_set_highlight_colors(s_menu, theme_highlight_bg(), theme_row_fg(true));
   menu_layer_set_click_config_onto_window(s_menu, window);
   // Let the system drive this menu when the bridge is available.
   (void)window_set_touch_bridge_disabled(window, !touch_nav_bridge_active());

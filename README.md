@@ -1,6 +1,7 @@
 # PebbleKimai
 
-Time tracking for [Kimai](https://www.kimai.org/) (self-hosted) on your Pebble:
+Time tracking for [Kimai](https://www.kimai.org/) (self-hosted) on your Pebble
+(Time 2, Round 2, 2 Duo and the classic platforms):
 choose the project on the watch, tap an activity to start a timer, tap it again
 to stop, or pick another to switch. The running timer ticks on the watch and in
 the header bar; the Kimai server is always the source of truth.
@@ -73,7 +74,7 @@ prefer HTTPS with a real certificate.
 ```bash
 npm install
 pebble build
-pebble install --emulator emery   # or basalt/chalk/diorite/aplite
+pebble install --emulator emery   # or basalt/chalk/diorite/aplite/gabbro/flint
 ```
 
 Regenerate icons (needs the icon venv):

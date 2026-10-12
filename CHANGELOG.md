@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.10.0
+
+- **Pebble Round 2 (gabbro) and Pebble 2 Duo (flint).** On round screens the
+  header puts the clock on top and the title under it, list rows follow the
+  edge of the circle, and the start screen moves the customer and status icon
+  inside it. On black-and-white screens the bars are white and the selected row
+  black, instead of a grey dither under the text. The header clock is a size
+  smaller on 144 px screens.
+- Settings page moved to @rebble/clay (needed for the new platforms).
+- Store screenshots for both.
+
 ## 2.9.0
 
 - **Sound on start/stop** (phone settings, off by default, Pebble Time 2):

@@ -6,7 +6,7 @@
 // kept fresh via a single app-wide minute tick, the elapsed time via the
 // activity list's second timer calling header_bar_refresh().
 
-#define HEADER_BAR_HEIGHT 28
+#define HEADER_BAR_HEIGHT PBL_IF_ROUND_ELSE(44, 28)
 
 // App lifecycle: subscribe/unsubscribe the minute tick.
 void header_bar_init(void);

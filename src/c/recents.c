@@ -60,12 +60,12 @@ static int16_t get_cell_height(MenuLayer *ml, MenuIndex *ci, void *ctx) {
 // project carries the weight (bold) and the activity the size, so neither line
 // wins outright — a row is identified by the pair, not by one of them.
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *ci, void *c) {
-  GRect b = layer_get_bounds(cell);
+  GRect b = theme_row_bounds(cell);
   bool hl = menu_cell_layer_is_highlighted(cell);
   if (data_recent_count() == 0) {
-    graphics_context_set_text_color(ctx, GColorBlack);
+    graphics_context_set_text_color(ctx, theme_row_fg(hl));
     graphics_draw_text(ctx, empty_text(), fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                       GRect(8, 10, b.size.w - 12, 22),
+                       GRect(b.origin.x + 8, 10, b.size.w - 12, 22),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
     return;
   }
@@ -73,15 +73,14 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *ci, void *c) {
   if (!r) return;
 
   if (r->project[0]) {
-    graphics_context_set_text_color(ctx, hl ? GColorBlack
-                                            : PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack));
+    graphics_context_set_text_color(ctx, theme_row_sub(hl));
     graphics_draw_text(ctx, r->project, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                       GRect(8, -1, b.size.w - 12, 20),
+                       GRect(b.origin.x + 8, -1, b.size.w - 12, 20),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
-  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_context_set_text_color(ctx, theme_row_fg(hl));
   graphics_draw_text(ctx, r->name, theme_name_font(),
-                     GRect(8, r->project[0] ? 17 : 9, b.size.w - 12, 22 + theme_name_grow()),
+                     GRect(b.origin.x + 8, r->project[0] ? 17 : 9, b.size.w - 12, 22 + theme_name_grow()),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
@@ -140,7 +139,7 @@ static void window_load(Window *window) {
     .select_click = select_click,
   });
   menu_layer_set_normal_colors(s_menu, GColorWhite, GColorBlack);
-  menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
+  menu_layer_set_highlight_colors(s_menu, theme_highlight_bg(), theme_row_fg(true));
   menu_layer_set_click_config_onto_window(s_menu, window);
   // Let the system drive this menu when the bridge is available.
   (void)window_set_touch_bridge_disabled(window, !touch_nav_bridge_active());

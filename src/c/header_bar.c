@@ -10,14 +10,34 @@ static const char *s_title = NULL;   // title override; NULL = default "Kimai"
 static void header_update(Layer *layer, GContext *ctx) {
   GRect b = layer_get_bounds(layer);
 
-  // Accent fill + a thin black bottom separator.
-  graphics_context_set_fill_color(ctx, theme_accent());
+  // Accent fill (white on black-and-white) + a thin black bottom separator.
+  graphics_context_set_fill_color(ctx, theme_bar_bg());
   graphics_fill_rect(ctx, b, 0, GCornerNone);
   graphics_context_set_stroke_color(ctx, GColorBlack);
   graphics_draw_line(ctx, GPoint(0, b.size.h - 1), GPoint(b.size.w, b.size.h - 1));
 
   graphics_context_set_text_color(ctx, GColorBlack);
   GFont f18 = fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD);
+  TimerState *tm = data_timer();
+  char left_buf[24];
+  if (tm->status == TIMER_RUNNING && s_show_elapsed) {
+    data_timer_elapsed_str(left_buf, sizeof(left_buf));
+  } else {
+    snprintf(left_buf, sizeof(left_buf), "%s", s_title ? s_title : "Kimai");
+  }
+
+#if defined(PBL_ROUND)
+  // No corners for the icon and the clock: the clock goes on top, and the
+  // title (or elapsed time) centred underneath.
+  char clock_buf[16];
+  clock_copy_time_string(clock_buf, sizeof(clock_buf));
+  graphics_draw_text(ctx, clock_buf, fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD),
+                     GRect(0, 6, b.size.w, 16),
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  graphics_draw_text(ctx, left_buf, f18, GRect(30, 19, b.size.w - 60, 20),
+                     GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
+  return;
+#endif
 
   // App icon (left, vertically centered); the left text starts after it.
   int name_x = 6;
@@ -34,21 +54,24 @@ static void header_update(Layer *layer, GContext *ctx) {
   clock_copy_time_string(time_buf, sizeof(time_buf));
   // 56 fits "23:59"; a 12-hour locale renders "11:59 PM" and was being
   // ellipsised down to the hour.
+  // A 144px screen takes the clock a size down so the title keeps more than
+  // its first letters.
+#if PBL_DISPLAY_WIDTH < 180
+  GFont time_font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
+  const int TIME_W = clock_is_24h_style() ? 34 : 54;
+  const int time_y = 6;
+#else
+  GFont time_font = fonts_get_system_font(FONT_KEY_GOTHIC_18);
   const int TIME_W = clock_is_24h_style() ? 56 : 78;
+  const int time_y = 4;
+#endif
   int time_left = b.size.w - 4 - TIME_W;
-  graphics_draw_text(ctx, time_buf, fonts_get_system_font(FONT_KEY_GOTHIC_18),
-                     GRect(time_left, 4, TIME_W, 20),
+  graphics_draw_text(ctx, time_buf, time_font,
+                     GRect(time_left, time_y, TIME_W, 20),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentRight, NULL);
 
   // Between the icon and the clock: the ticking elapsed time while a timer runs
   // (only where the window asked for it), otherwise the app title.
-  TimerState *tm = data_timer();
-  char left_buf[24];
-  if (tm->status == TIMER_RUNNING && s_show_elapsed) {
-    data_timer_elapsed_str(left_buf, sizeof(left_buf));
-  } else {
-    snprintf(left_buf, sizeof(left_buf), "%s", s_title ? s_title : "Kimai");
-  }
   graphics_draw_text(ctx, left_buf, f18, GRect(name_x, 4, time_left - name_x - 4, 20),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }

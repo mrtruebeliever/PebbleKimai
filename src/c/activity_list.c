@@ -76,33 +76,32 @@ static const char *status_text(void) {
 // The active-project row: project name (bold) with the customer as a sublabel,
 // and an accent stripe down the left edge to mark it as the active context.
 static void draw_project_row(GContext *ctx, const Layer *cell) {
-  GRect b = layer_get_bounds(cell);
+  GRect b = theme_row_bounds(cell);
   bool selected = menu_layer_get_selected_index(s_menu).row == 0;
   const char *name = data_active_project_name();
   const char *cust = data_active_project_customer();
 
-  graphics_context_set_fill_color(ctx, selected ? GColorBlack : theme_accent());
-  graphics_fill_rect(ctx, GRect(0, 0, 4, b.size.h), 0, GCornerNone);
+  graphics_context_set_fill_color(ctx, theme_marker(selected));
+  graphics_fill_rect(ctx, GRect(b.origin.x, 0, 4, b.size.h), 0, GCornerNone);
 
   // Customer on top in bold, project underneath: the shape the pickers use.
   // Only worth a line when the instance actually has more than one customer,
   // the same rule the project picker applies.
   bool show_cust = cust[0] && data_customer_count() > 1;
   if (show_cust) {
-    graphics_context_set_text_color(ctx, selected ? GColorBlack
-                                                  : PBL_IF_COLOR_ELSE(GColorDarkGray, GColorBlack));
+    graphics_context_set_text_color(ctx, theme_row_sub(selected));
     graphics_draw_text(ctx, cust, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                       GRect(10, -1, b.size.w - 14, 20),
+                       GRect(b.origin.x + 10, -1, b.size.w - 14, 20),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
-  graphics_context_set_text_color(ctx, GColorBlack);
+  graphics_context_set_text_color(ctx, theme_row_fg(selected));
   graphics_draw_text(ctx, name[0] ? name : i18n(STR_NO_PROJECT_SET), theme_name_font(),
-                     GRect(10, show_cust ? 17 : 5, b.size.w - 14, 22 + theme_name_grow()),
+                     GRect(b.origin.x + 10, show_cust ? 17 : 5, b.size.w - 14, 22 + theme_name_grow()),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 }
 
 static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *context) {
-  GRect b = layer_get_bounds(cell);
+  GRect b = theme_row_bounds(cell);
 
   if (has_project_row() && idx->row == 0) {
     draw_project_row(ctx, cell);
@@ -111,9 +110,9 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
   int ai = idx->row - act_offset();
 
   if (!list_ready() || data_activity_count() == 0) {
-    graphics_context_set_text_color(ctx, GColorBlack);
+    graphics_context_set_text_color(ctx, theme_row_fg(menu_cell_layer_is_highlighted(cell)));
     graphics_draw_text(ctx, status_text(), fonts_get_system_font(FONT_KEY_GOTHIC_18),
-                       GRect(4, 2, b.size.w - 8, b.size.h - 4),
+                       GRect(b.origin.x + 4, 2, b.size.w - 8, b.size.h - 4),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentCenter, NULL);
     return;
   }
@@ -127,22 +126,22 @@ static void draw_row(GContext *ctx, const Layer *cell, MenuIndex *idx, void *con
 
   // Never dim the selected row: DarkGray on the KellyGreen highlight is a
   // poor pair, and it lands on the row the user is about to act on.
-  graphics_context_set_text_color(ctx, (dim && !selected) ? GColorDarkGray : GColorBlack);
+  graphics_context_set_text_color(ctx, (dim && !selected) ? GColorDarkGray : theme_row_fg(selected));
   const int16_t name_h = 24 + theme_name_grow();
   graphics_draw_text(ctx, a->name, theme_name_font(),
-                     GRect(10, running ? 2 : (b.size.h - name_h) / 2, b.size.w - 16, name_h),
+                     GRect(b.origin.x + 10, running ? 2 : (b.size.h - name_h) / 2, b.size.w - 16, name_h),
                      GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
 
   if (running) {
     // Left edge marker + ticking elapsed line under the name.
-    graphics_context_set_fill_color(ctx, selected ? GColorBlack : theme_accent());
-    graphics_fill_rect(ctx, GRect(0, 0, 4, b.size.h), 0, GCornerNone);
+    graphics_context_set_fill_color(ctx, theme_marker(selected));
+    graphics_fill_rect(ctx, GRect(b.origin.x, 0, 4, b.size.h), 0, GCornerNone);
     char elapsed[16];
     data_timer_elapsed_str(elapsed, sizeof(elapsed));
     static char line[24];
     snprintf(line, sizeof(line), "%s%s", elapsed, tm->pending ? " ..." : "");
     graphics_draw_text(ctx, line, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                       GRect(10, name_h, b.size.w - 16, 22),
+                       GRect(b.origin.x + 10, name_h, b.size.w - 16, 22),
                        GTextOverflowModeTrailingEllipsis, GTextAlignmentLeft, NULL);
   }
 }
@@ -267,7 +266,7 @@ static void window_load(Window *window) {
     .select_click = select_click,
     .select_long_click = select_long_click,
   });
-  menu_layer_set_highlight_colors(s_menu, theme_accent(), GColorBlack);
+  menu_layer_set_highlight_colors(s_menu, theme_highlight_bg(), theme_row_fg(true));
   menu_layer_set_click_config_onto_window(s_menu, window);
   // Let the system drive this menu when the bridge is available. (void): on
   // platforms without touch the SDK stubs this out as a bare (0).

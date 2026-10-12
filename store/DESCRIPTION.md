@@ -50,12 +50,14 @@ SETUP
 Your phone needs network access to your Kimai instance (same network, or via a
 reverse proxy / VPN). HTTPS with a valid certificate is recommended.
 
-Works on Pebble Time / Time 2 (Basalt, Chalk, Emery) and the Aplite and Diorite
-platforms.
+Works on Pebble Time / Time 2 (Basalt, Chalk, Emery), the Pebble Round 2
+(Gabbro), the Pebble 2 Duo (Flint) and the Aplite and Diorite platforms.
 
 **Category:** Tools & Utilities
 **Icons:** store/icon-80.png, store/icon-144.png
 **Screenshots:** store/screenshots/ (01 running, 02 idle, 03 activities,
 04 recent activities, 05 project picker, 06 customer picker, 07 stop menu —
-all captured against dummy data, not a real Kimai instance)
+all captured against dummy data, not a real Kimai instance; the same seven
+for the Round 2 in store/screenshots/gabbro/ and the 2 Duo in
+store/screenshots/flint/)
 **Demo:** store/pebblekimai-demo.gif

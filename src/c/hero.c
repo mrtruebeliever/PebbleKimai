@@ -115,14 +115,21 @@ static void draw_card(Layer *layer, GContext *ctx) {
   // bottom-right corner, which is otherwise empty, leaving the top of the card
   // for the project name.
   GBitmap *ico = running ? s_ico_running : (data_last_activity_id() > 0 ? s_ico_last : NULL);
-  s_zone_icon = GRect(b.size.w - HERO_ICON_SIZE - 6, H - HERO_ICON_SIZE - 4,
-                      HERO_ICON_SIZE, HERO_ICON_SIZE);
+  // Round: no corner to put it in, so it sits centred at the bottom, under
+  // the customer.
+  s_zone_icon = round ? GRect((b.size.w - HERO_ICON_SIZE) / 2, H - HERO_ICON_SIZE - 8,
+                              HERO_ICON_SIZE, HERO_ICON_SIZE)
+                      : GRect(b.size.w - HERO_ICON_SIZE - 6, H - HERO_ICON_SIZE - 4,
+                              HERO_ICON_SIZE, HERO_ICON_SIZE);
   if (ico) {
     graphics_context_set_compositing_mode(ctx, GCompOpSet);
     graphics_draw_bitmap_in_rect(ctx, ico, s_zone_icon);
   }
   // Bottom lines stay clear of it.
-  int bw = ico ? lw - (HERO_ICON_SIZE + 10) : lw;
+  int bw = (ico && !round) ? lw - (HERO_ICON_SIZE + 10) : lw;
+  int bx = lx;
+  int icon_h = (round && ico) ? HERO_ICON_SIZE + 10 : 0;
+  if (round) { bw = 150; bx = (b.size.w - bw) / 2; }   // inside the circle's lower chord
 
   // Project the card is about, as small context directly above the activity:
   // while a timer runs that is the project the timesheet is booked on, which is
@@ -179,7 +186,7 @@ static void draw_card(Layer *layer, GContext *ctx) {
   bool show_cust = tall && cust[0];
   int next_h = next ? 20 : 0;
   int cust_h = show_cust ? 24 : 0;
-  int bottom = H - next_h - cust_h - 4;   // a little air above the bottom lines
+  int bottom = H - icon_h - next_h - cust_h - 4;   // a little air above the bottom lines
 
   int block_h = running ? (wide ? 48 : 40) : name_max_h;
   int block_y = HERO_NAME_Y + name_h + HERO_NAME_GAP;
@@ -203,14 +210,14 @@ static void draw_card(Layer *layer, GContext *ctx) {
 
   if (show_cust) {
     graphics_context_set_text_color(ctx, GColorBlack);
-    graphics_draw_text(ctx, cust, f_proj, GRect(lx, H - next_h - 24, bw, 22),
+    graphics_draw_text(ctx, cust, f_proj, GRect(bx, H - icon_h - next_h - 24, bw, 22),
                        GTextOverflowModeTrailingEllipsis, al, NULL);
   }
   if (next) {
     char line[PROJ_NAME_LEN + 16];
     snprintf(line, sizeof(line), "%s: %s", i18n(STR_HERO_NEXT), next);
     graphics_context_set_text_color(ctx, accent);
-    graphics_draw_text(ctx, line, f_label, GRect(lx, H - 20, bw, 18),
+    graphics_draw_text(ctx, line, f_label, GRect(bx, H - icon_h - 20, bw, 18),
                        GTextOverflowModeTrailingEllipsis, al, NULL);
   }
 
